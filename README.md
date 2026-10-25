@@ -101,7 +101,7 @@ tools/
 This project is a Windows port of [rolottr/bambu-bar](https://github.com/rolottr/bambu-bar),
 licensed under the MIT License. The original macOS app, its design language, and the Bambu Lab
 MQTT protocol knowledge are © rolottr. Protocol sample report from
-[ha-bambulab](https://github.com/mittwe/ha_bambulab) (MIT). The Windows port was developed
+[ha-bambulab](https://github.com/greghesp/ha-bambulab) (MIT). The Windows port was developed
 with AI assistance (Qwen3 27B via LM Studio Bionic).
 
 See [LICENSE](LICENSE) for the full text.
