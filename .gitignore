@@ -1,0 +1,21 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets / local config
+*.pfx
+appsettings.Local.json
+credentials.json
