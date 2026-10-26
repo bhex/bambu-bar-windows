@@ -18,6 +18,7 @@ namespace BambuBar.App;
 public static class TrayIcon
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Icon> Cache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, Icon> SpinCache = new();
 
     /// <summary>
     /// Builds (or reuses) the icon for a state.
@@ -45,7 +46,75 @@ public static class TrayIcon
     }
 
     /// <summary>Drops cached icons (after a state flood, the cache is bounded anyway).</summary>
-    public static void ClearCache() => Cache.Clear();
+    public static void ClearCache()
+    {
+        Cache.Clear();
+        SpinCache.Clear();
+    }
+
+    /// <summary>
+    /// One frame of the "loading 3MF / slicing" spinner: a lime arc rotating around a printer
+    /// glyph. The printer reports no numeric progress in this phase, so the arc is indeterminate.
+    /// </summary>
+    public static Icon PrepSpin(int frame)
+    {
+        int slot = ((frame % 24) + 24) % 24;
+        if (SpinCache.TryGetValue(slot, out var hit)) return hit;
+        using var bitmap = RenderPrepSpin(slot);
+        var handle = bitmap.GetHicon();
+        try
+        {
+            using var temp = Icon.FromHandle(handle);
+            var icon = (Icon)temp.Clone();
+            SpinCache[slot] = icon;
+            return icon;
+        }
+        finally
+        {
+            NativeMethods.DestroyIcon(handle);
+        }
+    }
+
+    private static Bitmap RenderPrepSpin(int slot)
+    {
+        const int size = 48;
+        var bitmap = new Bitmap(size, size, PixelFormat.Format32bppPArgb);
+        using var g = Graphics.FromImage(bitmap);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(Color.Transparent);
+
+        float cx = size / 2f, cy = size / 2f;
+        float arcR = size / 2f - 5f;
+
+        using var bgPen = new Pen(Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF), 5f);
+        bgPen.StartCap = LineCap.Round;
+        bgPen.EndCap = LineCap.Round;
+        g.DrawEllipse(bgPen, cx - arcR, cy - arcR, arcR * 2, arcR * 2);
+
+        using var arcPen = new Pen(ToD(Palette.Accent), 5f);
+        arcPen.StartCap = LineCap.Round;
+        arcPen.EndCap = LineCap.Round;
+        g.DrawArc(arcPen, cx - arcR, cy - arcR, arcR * 2, arcR * 2, slot * 15, 100);
+
+        DrawPrinterGlyph(g, cx, cy, size * 0.55f, Color.White, DashStyle.Solid);
+        return bitmap;
+    }
+
+    /// <summary>The little printer frame, centred on (cx, cy) in a <paramref name="box"/>-sized square.</summary>
+    private static void DrawPrinterGlyph(Graphics g, float cx, float cy, float box, Color color, DashStyle dash)
+    {
+        float half = box / 2f;
+        var frame = new RectangleF(cx - half, cy - half, box, box);
+        using var outline = new Pen(color, Math.Max(1.5f, box * 0.06f));
+        outline.DashStyle = dash;
+        g.DrawRectangle(outline, frame);
+        using var fill = new SolidBrush(color);
+        float headY = frame.Top + frame.Height * 0.28f;
+        float headW = frame.Width * 0.35f;
+        g.FillRectangle(fill, cx - headW / 2, headY, headW, box * 0.08f);
+        float plateY = frame.Bottom - frame.Height * 0.22f;
+        g.FillRectangle(fill, frame.Left + frame.Width * 0.15f, plateY, frame.Width * 0.7f, box * 0.06f);
+    }
 
     /// <summary>The app icon (welcome screens, about page) — loaded from Resources when available.</summary>
     public static System.Windows.Media.ImageSource? AppImage()
@@ -174,19 +243,7 @@ public static class TrayIcon
 
             default: // Idle, null, offline: simple printer frame
             {
-                float pad = size * 0.18f;
-                var frame = new RectangleF(pad, pad, size - 2 * pad, size - 2 * pad);
-                var outlinePen = new Pen(glyph, Math.Max(1.5f, size * 0.06f));
-                if (offline || state is null) outlinePen.DashStyle = DashStyle.Dash;
-                g.DrawRectangle(outlinePen, frame);
-                outlinePen.Dispose();
-
-                using var wb = new SolidBrush(glyph);
-                float headY = frame.Top + frame.Height * 0.28f;
-                float headW = frame.Width * 0.35f;
-                g.FillRectangle(wb, cx - headW / 2, headY, headW, size * 0.08f);
-                float plateY = frame.Bottom - frame.Height * 0.22f;
-                g.FillRectangle(wb, frame.Left + frame.Width * 0.15f, plateY, frame.Width * 0.7f, size * 0.06f);
+                DrawPrinterGlyph(g, cx, cy, size * 0.64f, glyph, offline || state is null ? DashStyle.Dash : DashStyle.Solid);
                 break;
             }
         }

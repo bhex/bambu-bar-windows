@@ -256,7 +256,7 @@ public class PrinterStatus
         JobState.Printing => StageText is { } st && StageId != 0 ? st
             : TotalLayers > 0 ? $"Layer {Layer} of {TotalLayers}"
             : "Printing",
-        JobState.Preparing => StageText ?? "Preparing",
+        JobState.Preparing => "Loading 3MF & slicing…",
         JobState.Paused => StageText is { } st && st.StartsWith("Paused") ? st : "Paused",
         JobState.Finished => "Finished",
         JobState.Failed => Canceled ? "Canceled" : (Issues.Count > 0 ? Issues[0].Message : "Print failed"),

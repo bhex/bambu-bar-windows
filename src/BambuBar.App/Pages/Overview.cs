@@ -107,8 +107,11 @@ public sealed class OverviewPage
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var percent = new TextBlock { Text = $"{status.Progress}%", FontSize = 30, FontWeight = FontWeights.Bold };
-        var bar = Ui.Gauge(status.Progress / 100.0, Ui.Brush(color), height: 8);
+        bool indeterminate = status.State == JobState.Preparing && status.Progress < 2;
+        var percent = new TextBlock { Text = indeterminate ? "…" : $"{status.Progress}%", FontSize = 30, FontWeight = FontWeights.Bold };
+        var bar = indeterminate
+            ? Ui.Indeterminate(Ui.Brush(color), height: 8)
+            : Ui.Gauge(status.Progress / 100.0, Ui.Brush(color), height: 8);
         var timing = new TextBlock
         {
             Text = status.RemainingMinutes > 0

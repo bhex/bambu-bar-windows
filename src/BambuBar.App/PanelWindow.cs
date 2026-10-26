@@ -31,7 +31,8 @@ public sealed class PanelWindow : Window
         Width = 390;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
-        WindowStyle = WindowStyle.SingleBorderWindow;
+        WindowStyle = WindowStyle.None;
+        AllowsTransparency = true;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.Manual;
         Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF6, 0xF4));
@@ -97,7 +98,8 @@ public sealed class PanelWindow : Window
         bool online = session is not null && session.CurrentPhase == PrinterSession.Phase.Online;
         bool configured = _store.Sessions.Count > 0;
 
-        string key = $"{configured}|{session?.Config.Serial}|{session?.CurrentPhase}|{status?.State}|{status?.Issues.Count}|{status?.ActiveSpoolId}";
+        string prepFlag = status is { State: JobState.Preparing, Progress: >= 2 } ? "p" : "-";
+        string key = $"{configured}|{session?.Config.Serial}|{session?.CurrentPhase}|{status?.State}|{status?.Issues.Count}|{status?.ActiveSpoolId}|{prepFlag}";
         if (force || key != _lastKey)
         {
             _lastKey = key;
@@ -123,6 +125,7 @@ public sealed class Body
 
     private TextBlock? _jobName, _detail, _percent, _timing, _issueText, _updated;
     private Border? _progressBar;
+    private bool _indeterminate;
 
     public Body(PrinterStore store, Action openMainWindow, Action quit)
     {
@@ -168,14 +171,14 @@ public sealed class Body
     {
         if (_jobName is not null) _jobName.Text = status.JobName.Length > 0 ? status.JobName : "Print";
         if (_detail is not null) _detail.Text = status.DetailText;
-        if (_percent is not null) _percent.Text = $"{status.Progress}%";
+        if (_percent is not null && !_indeterminate) _percent.Text = $"{status.Progress}%";
         if (_timing is not null)
         {
             _timing.Text = status.RemainingMinutes > 0
                 ? $"~{Format.Duration(status.RemainingMinutes)} left"
                 : (status.EstimatedEnd is { } end ? $"ends {Format.Finish(end)}" : "");
         }
-        if (_progressBar is not null && _progressBar.Child is Border fill)
+        if (_progressBar is not null && !_indeterminate && _progressBar.Child is Border fill)
             fill.Width = Math.Max(0, _progressBar.ActualWidth * status.Progress / 100.0);
         if (_updated is not null)
             _updated.Text = $"Updated {Format.RelativeTime(status.UpdatedAt).Replace(" ago", "")}";
@@ -320,9 +323,12 @@ public sealed class Body
         percentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         percentRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
+        // While the printer loads the 3MF and slices it there is no numeric progress: shimmer, don't pretend.
+        bool indeterminate = status.State == JobState.Preparing && status.Progress < 2;
+        _indeterminate = indeterminate;
         _percent = new TextBlock
         {
-            Text = $"{status.Progress}%",
+            Text = indeterminate ? "…" : $"{status.Progress}%",
             FontSize = 26,
             FontWeight = FontWeights.Bold,
             Foreground = Ui.Brush(stateColor),
@@ -338,7 +344,9 @@ public sealed class Body
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0),
         };
-        _progressBar = Ui.Gauge(status.Progress / 100.0, Ui.Brush(stateColor), height: 7);
+        _progressBar = indeterminate
+            ? Ui.Indeterminate(Ui.Brush(stateColor), height: 7)
+            : Ui.Gauge(status.Progress / 100.0, Ui.Brush(stateColor), height: 7);
 
         Grid.SetColumn(_percent, 0);
         Grid.SetColumn(_progressBar, 1);

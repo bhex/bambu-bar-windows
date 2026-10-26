@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using BambuBar.Core.Models;
 using Color = System.Windows.Media.Color;
@@ -147,6 +148,7 @@ public static class Ui
 {
     private static readonly Brush SecondaryText = new SolidColorBrush(Color.FromRgb(0x6E, 0x74, 0x7B));
     private static readonly Brush Hairline = new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0x00, 0x00));
+    private static readonly System.Diagnostics.Stopwatch SharedClock = System.Diagnostics.Stopwatch.StartNew();
 
     static Ui()
     {
@@ -280,6 +282,58 @@ public static class Ui
         // Fraction is applied once the track has a real width (via a size-changed handler).
         track.SizeChanged += (_, _) => inner.Width = Math.Max(0, track.ActualWidth * Math.Clamp(fraction, 0, 1));
         inner.Width = Math.Max(0, track.ActualWidth * Math.Clamp(fraction, 0, 1));
+        return track;
+    }
+
+    /// <summary>
+    /// An indeterminate capsule bar: a rounded runner gliding across the track. Used while the
+    /// printer loads the 3MF and slices it — a phase where no numeric progress is reported.
+    /// The phase comes from a shared clock, so a rebuilt bar picks up where the previous one left
+    /// off instead of visibly restarting.
+    /// </summary>
+    public static Border Indeterminate(Brush fill, double height = 4)
+    {
+        var track = new Border
+        {
+            Height = height,
+            CornerRadius = new CornerRadius(height / 2),
+            Background = new SolidColorBrush(Color.FromArgb(0x22, 0x00, 0x00, 0x00)),
+            ClipToBounds = true,
+        };
+        var runner = new Border
+        {
+            Height = height,
+            CornerRadius = new CornerRadius(height / 2),
+            Background = fill,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var move = new TranslateTransform();
+        runner.RenderTransform = move;
+        track.Child = runner;
+
+        const double secondsPerLoop = 1.4;
+        bool started = false;
+        void Start()
+        {
+            if (started || track.ActualWidth <= 0) return;
+            started = true;
+            double width = Math.Max(48, track.ActualWidth * 0.32);
+            runner.Width = width;
+            var anim = new DoubleAnimation
+            {
+                From = -width,
+                To = track.ActualWidth,
+                Duration = new Duration(TimeSpan.FromSeconds(secondsPerLoop)),
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
+            };
+            // Negative begin time: the loop is already mid-flight, continuous across rebuilds.
+            anim.BeginTime = TimeSpan.FromSeconds(-(SharedClock.Elapsed.TotalSeconds % secondsPerLoop));
+            move.BeginAnimation(TranslateTransform.XProperty, anim);
+        }
+        track.Loaded += (_, _) => Start();
+        track.SizeChanged += (_, _) => Start();
         return track;
     }
 

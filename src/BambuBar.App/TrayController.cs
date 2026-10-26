@@ -20,6 +20,8 @@ public sealed class TrayController : IDisposable
     private readonly Action _openMainWindow;
     private readonly Action _quit;
     private System.Windows.Forms.Timer? _clickTimer;
+    private System.Windows.Forms.Timer? _prepAnim;
+    private int _prepFrame;
 
     public TrayController(PrinterStore store, Action openPanel, Action openMainWindow, Action quit)
     {
@@ -63,6 +65,14 @@ public sealed class TrayController : IDisposable
         {
             _clickTimer!.Stop();
             _openPanel();
+        };
+
+        // While the printer loads the 3MF and slices it no numeric progress is reported: spin an arc.
+        _prepAnim = new System.Windows.Forms.Timer { Interval = 100 };
+        _prepAnim.Tick += (_, _) =>
+        {
+            _prepFrame = (_prepFrame + 1) % 24;
+            _tray.Icon = TrayIcon.PrepSpin(_prepFrame);
         };
         _tray.MouseClick += (_, e) =>
         {
@@ -142,7 +152,11 @@ public sealed class TrayController : IDisposable
             alert = status.MostSevereIssue is { Severity: IssueSeverity.Fatal or IssueSeverity.Serious };
         }
 
-        _tray.Icon = TrayIcon.Get(state, progress, alert, configured && !online);
+        bool preparing = state == JobState.Preparing && progress < 0.02 && online;
+        _tray.Icon = preparing
+            ? TrayIcon.PrepSpin(_prepFrame)
+            : TrayIcon.Get(state, progress, alert, configured && !online);
+        if (preparing) _prepAnim?.Start(); else _prepAnim?.Stop();
         _tray.Text = TooltipText(session, status, online);
         UpdateMenu(session, status, online);
     }
@@ -170,7 +184,7 @@ public sealed class TrayController : IDisposable
         if (!s.State.IsActive())
             return $"{session.Config.Name} — {s.StateTitle}";
 
-        string pct = $"{s.Progress}%";
+        string pct = s.State == JobState.Preparing ? "Preparing…" : $"{s.Progress}%";
         string? left = s.RemainingMinutes > 0 ? Format.Duration(s.RemainingMinutes) : null;
         return _store.Settings.MenuBarStyleSetting switch
         {
@@ -186,6 +200,8 @@ public sealed class TrayController : IDisposable
     public void Dispose()
     {
         _clickTimer?.Dispose();
+        _prepAnim?.Stop();
+        _prepAnim?.Dispose();
         _tray.Visible = false;
         _tray.Dispose();
     }
