@@ -72,7 +72,7 @@ public static class TrayIcon
 
     private static Bitmap Render(JobState? state, double fill, bool alert, bool offline)
     {
-        const int size = 32;
+        const int size = 48;
         var bitmap = new Bitmap(size, size, PixelFormat.Format32bppPArgb);
         using var g = Graphics.FromImage(bitmap);
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -108,15 +108,15 @@ public static class TrayIcon
             case JobState.Printing or JobState.Preparing when fill > 0.02f:
             {
                 // Thick progress arc (readable at 16px)
-                float arcR = size / 2f - 3f;
-                var bgPen = new Pen(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF), 3.5f);
+                float arcR = size / 2f - 5f;
+                var bgPen = new Pen(Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF), 5f);
                 bgPen.StartCap = LineCap.Round;
                 bgPen.EndCap = LineCap.Round;
                 g.DrawEllipse(bgPen, cx - arcR, cy - arcR, arcR * 2, arcR * 2);
                 bgPen.Dispose();
 
                 float sweep = (float)(fill * 350.0);
-                var arcPen = new Pen(Color.White, 3.5f);
+                var arcPen = new Pen(Color.White, 5f);
                 arcPen.StartCap = LineCap.Round;
                 arcPen.EndCap = LineCap.Round;
                 g.DrawArc(arcPen, cx - arcR, cy - arcR, arcR * 2, arcR * 2, -90, sweep);
@@ -125,7 +125,7 @@ public static class TrayIcon
                 // Large bold percentage number
                 int pct = (int)Math.Round(fill * 100);
                 string num = pct >= 100 ? "100" : $"{pct}";
-                float fontSize = pct >= 100 ? 9f : 11f;
+                float fontSize = pct >= 100 ? 16f : 20f;
                 using var font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
                 var sf = new StringFormat();
                 sf.Alignment = StringAlignment.Center;
