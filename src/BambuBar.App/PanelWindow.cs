@@ -420,14 +420,16 @@ public sealed class Body
     private static UIElement TempTile(string title, double? current, double? target, Color tint, double max, bool readOnly = false)
     {
         var grid = new Grid();
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(4) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        // Colored top accent bar
+        // Colored top accent stripe. It is a flat, full-width bar; the rounded
+        // top corners are produced by clipping the card to its shape below, so
+        // it hugs the card's rounded top edge instead of collapsing into a lens.
         var accentBar = new Border
         {
             Background = Ui.Brush(readOnly ? Palette.Chamber : (target is { } tt && tt > 0 ? tint : ThemeEngine.Current.Neutral(0x40))),
-            CornerRadius = new CornerRadius(14, 14, 0, 0),
+            CornerRadius = new CornerRadius(0),
         };
         Grid.SetRow(accentBar, 0);
         grid.Children.Add(accentBar);
@@ -471,6 +473,19 @@ public sealed class Body
                 Direction = 270,
             },
         };
+
+        // Clip the card content to a rounded rect matching the card's corner
+        // radius so the top accent stripe follows the rounded top edge.
+        var cardClip = new System.Windows.Media.RectangleGeometry
+        {
+            RadiusX = 14,
+            RadiusY = 14,
+        };
+        void ApplyClipSize(double w, double h) => cardClip.Rect = new Rect(0, 0, w, h);
+        grid.SizeChanged += (s, e) => ApplyClipSize(e.NewSize.Width, e.NewSize.Height);
+        grid.Loaded += (s, e) => ApplyClipSize(grid.ActualWidth, grid.ActualHeight);
+        grid.Clip = cardClip;
+
         return outer;
     }
 
