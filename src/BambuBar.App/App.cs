@@ -206,6 +206,8 @@ public sealed class App : System.Windows.Application
                     var line = reader.ReadLine();
                     if (line == "open")
                         Dispatcher.BeginInvoke(OpenMainWindow);
+                    else if (line == "panel")
+                        Dispatcher.BeginInvoke(OpenPanel);
                 }
                 catch
                 {
@@ -220,12 +222,15 @@ public sealed class App : System.Windows.Application
 
     private static void TrySignalFirstInstance()
     {
+        // A second launch forwards an intent to the running instance: "--panel" opens the mini
+        // panel, anything else opens the main window (like clicking the Dock icon).
+        string command = Environment.GetCommandLineArgs().Contains("--panel") ? "panel" : "open";
         try
         {
             using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
             client.Connect(400);
             using var writer = new StreamWriter(client);
-            writer.WriteLine("open");
+            writer.WriteLine(command);
             writer.Flush();
         }
         catch
