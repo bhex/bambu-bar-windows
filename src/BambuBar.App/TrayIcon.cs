@@ -80,22 +80,22 @@ public static class TrayIcon
 
         float u = size / 24f; // design grid: 24 units, glyph centred in a 20-unit chip
 
-        // MARK: background chip
-        Color chip;
-        if (offline || state is null) chip = Color.FromArgb(0x8A, 0x91, 0x99);
-        else chip = state switch
+        // MARK: background chip (skip for active printing — transparent for contrast on dark taskbar)
+        bool isPrinting = state is JobState.Printing or JobState.Preparing;
+        if (!isPrinting)
         {
-            JobState.Idle => Color.FromArgb(0x6E, 0x74, 0x7B),
-            JobState.Preparing => ToD(Palette.Preparing),
-            JobState.Printing => ToD(Palette.Accent),
-            JobState.Paused => ToD(Palette.Paused),
-            JobState.Finished => ToD(Palette.Finished),
-            JobState.Failed => ToD(Palette.Failed),
-            _ => Color.FromArgb(0x6E, 0x74, 0x7B),
-        };
-        using (var bg = new SolidBrush(chip))
-        using (var path = Rounded(2 * u, 2 * u, 20 * u, 20 * u, 4.5f * u))
-        {
+            Color chip;
+            if (offline || state is null) chip = Color.FromArgb(0x8A, 0x91, 0x99);
+            else chip = state switch
+            {
+                JobState.Idle => Color.FromArgb(0x6E, 0x74, 0x7B),
+                JobState.Paused => ToD(Palette.Paused),
+                JobState.Finished => ToD(Palette.Finished),
+                JobState.Failed => ToD(Palette.Failed),
+                _ => Color.FromArgb(0x6E, 0x74, 0x7B),
+            };
+            using var bg = new SolidBrush(chip);
+            using var path = Rounded(2 * u, 2 * u, 20 * u, 20 * u, 4.5f * u);
             g.FillPath(bg, path);
         }
 
