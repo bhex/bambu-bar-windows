@@ -183,11 +183,13 @@ public static class Ui
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+        // The left accent stripe is a flat, full-height bar; its rounded top-left and
+        // bottom-left corners come from clipping the card to its shape below, so it
+        // hugs the rounded left edge instead of collapsing into a vertical lens.
         var stripe = new Border
         {
             Background = new SolidColorBrush(accent),
-            CornerRadius = new CornerRadius(radius, 0, 0, radius),
-            Margin = new Thickness(0, 0, 0, 0),
+            CornerRadius = new CornerRadius(0),
         };
         Grid.SetColumn(stripe, 0);
         grid.Children.Add(stripe);
@@ -212,6 +214,15 @@ public static class Ui
                 Direction = 270,
             },
         };
+
+        // Clip the card content to a rounded rect matching the card's corner radius so
+        // the left accent stripe follows the rounded left edge.
+        var cardClip = new System.Windows.Media.RectangleGeometry { RadiusX = radius, RadiusY = radius };
+        void ApplyClipSize(double w, double h) => cardClip.Rect = new System.Windows.Rect(0, 0, w, h);
+        grid.SizeChanged += (s, e) => ApplyClipSize(e.NewSize.Width, e.NewSize.Height);
+        grid.Loaded += (s, e) => ApplyClipSize(grid.ActualWidth, grid.ActualHeight);
+        grid.Clip = cardClip;
+
         return outer;
     }
 
