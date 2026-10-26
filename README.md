@@ -8,6 +8,18 @@ stop and change print speed without leaving the printer's own app.
 Built with C# / .NET 8 / WPF. No cloud, no account, no analytics — it talks only to your printer
 over the printer's own MQTT interface.
 
+## Screenshots
+
+| Mini panel (double-click the tray icon) | Main window |
+| --- | --- |
+| ![Mini panel](docs/screenshots/panel.png) | ![Main window](docs/screenshots/main-window.png) |
+
+The tray icon reflects the current print state:
+
+![Tray icon states](docs/screenshots/tray-states.png)
+
+All screenshots were captured in `--demo` mode (built-in fake printer, no network).
+
 ## Building
 
 Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (Windows 10/11).
