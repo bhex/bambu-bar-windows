@@ -10,15 +10,15 @@ over the printer's own MQTT interface.
 
 ## Screenshots
 
-| Mini panel (double-click the tray icon) | Main window |
-| --- | --- |
-| ![Mini panel](docs/screenshots/panel.png) | ![Main window](docs/screenshots/main-window.png) |
+Mini panel (double-click the tray icon):
+
+![Mini panel](docs/screenshots/panel.png)
 
 The tray icon reflects the current print state:
 
 ![Tray icon states](docs/screenshots/tray-states.png)
 
-All screenshots were captured in `--demo` mode (built-in fake printer, no network).
+Captured in `--demo` mode (built-in fake printer, no network).
 
 ## Building
 
