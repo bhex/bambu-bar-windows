@@ -116,7 +116,7 @@ public static class TrayIcon
                 bgPen.Dispose();
 
                 float sweep = (float)(fill * 350.0);
-                var arcPen = new Pen(Color.White, 5f);
+                var arcPen = new Pen(ToD(Palette.Accent), 5f);
                 arcPen.StartCap = LineCap.Round;
                 arcPen.EndCap = LineCap.Round;
                 g.DrawArc(arcPen, cx - arcR, cy - arcR, arcR * 2, arcR * 2, -90, sweep);
