@@ -71,14 +71,16 @@ public sealed class PanelWindow : Window
         _ticker.Start();
 
         Deactivated += (_, _) => Close();
-        Loaded += (_, _) => PositionNearTray();
+        ContentRendered += (_, _) => PositionNearTray();
     }
 
     private void PositionNearTray()
     {
         var area = SystemParameters.WorkArea;
+        // Use the actual rendered height (SizeToContent applies by now).
+        double h = ActualHeight > 0 ? ActualHeight : 400; // fallback if still measuring
         Left = area.Right - Width - 12;
-        Top = area.Bottom - ActualHeight - 12;
+        Top = Math.Max(0, area.Bottom - h - 12);
     }
 
     private void ShowToast(PrinterStore.Toast toast)
