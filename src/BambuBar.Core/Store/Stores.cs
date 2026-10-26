@@ -69,6 +69,14 @@ public sealed class SettingsStore
         Both,
     }
 
+    public enum ThemeMode
+    {
+        /// <summary>Follow the Windows system appearance (live).</summary>
+        Auto,
+        Light,
+        Dark,
+    }
+
     public List<PrinterConfig> Printers { get; set; } = new();
     public string? SelectedSerial { get; set; }
     /// <summary>Null = automatic.</summary>
@@ -80,6 +88,7 @@ public sealed class SettingsStore
     public bool NotifyStarted { get; set; } = false;
     public bool ConfirmStop { get; set; } = true;
     public bool OpenAtLogin { get; set; }
+    public ThemeMode ThemeModeSetting { get; set; } = ThemeMode.Auto;
 
     private static readonly JsonSerializerOptions Options = new()
     {

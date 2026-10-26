@@ -35,9 +35,10 @@ public sealed class PanelWindow : Window
         AllowsTransparency = true;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.Manual;
-        Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF6, 0xF4));
+        Background = ThemeEngine.Current.PanelBackground;
         SnapsToDevicePixels = true;
         Icon = TrayIcon.AppImage();
+        ThemeEngine.Current.Changed += ApplyTheme;
 
         var root = new StackPanel { Margin = new Thickness(12) };
         root.Children.Add(_body.Host);
@@ -47,7 +48,7 @@ public sealed class PanelWindow : Window
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(2, 8, 2, 0),
-            Foreground = new SolidColorBrush(Color.FromRgb(0x6E, 0x74, 0x7B)),
+            Foreground = ThemeEngine.Current.SecondaryBrush,
             Visibility = Visibility.Collapsed,
         };
         root.Children.Add(_toast);
@@ -56,7 +57,7 @@ public sealed class PanelWindow : Window
         {
             Text = "Double-click the tray icon for the full window",
             FontSize = 10.5,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA0, 0xA6)),
+            Foreground = ThemeEngine.Current.TertiaryBrush,
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 10, 0, 0),
         });
@@ -74,6 +75,12 @@ public sealed class PanelWindow : Window
         Deactivated += (_, _) => Hide();
         ContentRendered += (_, _) => PositionNearTray();
         SizeChanged += (_, _) => PositionNearTray();
+    }
+
+    private void ApplyTheme()
+    {
+        Background = ThemeEngine.Current.PanelBackground;
+        Refresh(force: true);
     }
 
     private void PositionNearTray()
@@ -200,6 +207,7 @@ public sealed class Body
             Text = configured ? (session?.Config.Name ?? "Bambu Bar") : "Bambu Bar",
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
         });
 
         Color dot = online ? Palette.Accent
@@ -259,7 +267,7 @@ public sealed class Body
     private UIElement SetupPrompt()
     {
         var panel = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-        panel.Children.Add(new TextBlock { Text = "No printer set up", FontSize = 14, FontWeight = FontWeights.SemiBold });
+        panel.Children.Add(new TextBlock { Text = "No printer set up", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
         panel.Children.Add(new TextBlock
         {
             Text = "Bambu Bar shows your print's progress, temperatures and filament in the system tray. It talks to the printer directly over your network — no account, no cloud.",
@@ -304,6 +312,7 @@ public sealed class Body
             Text = status.JobName.Length > 0 ? status.JobName : "Print",
             FontSize = 18,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
         panel.Children.Add(_jobName);
@@ -380,6 +389,7 @@ public sealed class Body
         {
             Text = issue.Message,
             FontSize = 12,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             TextWrapping = TextWrapping.Wrap,
         };
         content.Children.Add(_issueText);
@@ -416,7 +426,7 @@ public sealed class Body
         // Colored top accent bar
         var accentBar = new Border
         {
-            Background = Ui.Brush(readOnly ? Palette.Chamber : (target is { } tt && tt > 0 ? tint : Color.FromArgb(0x40, 0x00, 0x00, 0x00))),
+            Background = Ui.Brush(readOnly ? Palette.Chamber : (target is { } tt && tt > 0 ? tint : ThemeEngine.Current.Neutral(0x40))),
             CornerRadius = new CornerRadius(14, 14, 0, 0),
         };
         Grid.SetRow(accentBar, 0);
@@ -429,6 +439,7 @@ public sealed class Body
             Text = current is { } c ? $"{(int)Math.Round(c)}°" : "—",
             FontSize = 22,
             FontWeight = FontWeights.Bold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             Margin = new Thickness(0, 1, 0, 0),
         });
         string sub = readOnly ? "Read only"
@@ -439,7 +450,7 @@ public sealed class Body
         content.Children.Add(new TextBlock { Text = sub, FontSize = 10, Foreground = Ui.Brush(Palette.Idle), Margin = new Thickness(0, 2, 0, 5) });
         content.Children.Add(Ui.Gauge(
             (current ?? 0) / max,
-            Ui.Brush(readOnly ? Palette.Chamber : (target is { } t2 && t2 > 0 ? tint : Color.FromArgb(0x4D, 0, 0, 0))),
+            Ui.Brush(readOnly ? Palette.Chamber : (target is { } t2 && t2 > 0 ? tint : ThemeEngine.Current.Neutral(0x4D))),
             height: 4));
         Grid.SetRow(content, 1);
         grid.Children.Add(content);
@@ -447,14 +458,14 @@ public sealed class Body
         var outer = new Border
         {
             CornerRadius = new CornerRadius(14),
-            Background = new SolidColorBrush(Color.FromArgb(0x0D, 0, 0, 0)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(0x33, 0, 0, 0)),
+            Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x0D)),
+            BorderBrush = new SolidColorBrush(ThemeEngine.Current.Neutral(0x33)),
             BorderThickness = new Thickness(0.75),
             Child = grid,
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
                 Color = Colors.Black,
-                Opacity = 0.06,
+                Opacity = ThemeEngine.Current.ShadowOpacity,
                 BlurRadius = 12,
                 ShadowDepth = 2,
                 Direction = 270,
@@ -479,8 +490,8 @@ public sealed class Body
                 Width = 22,
                 Height = 22,
                 CornerRadius = new CornerRadius(11),
-                Background = color is { } c ? Ui.Brush(c) : new SolidColorBrush(Color.FromArgb(0x29, 0, 0, 0)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(0x33, 0, 0, 0)),
+                Background = color is { } c ? Ui.Brush(c) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x29)),
+                BorderBrush = new SolidColorBrush(ThemeEngine.Current.Neutral(0x33)),
                 BorderThickness = new Thickness(0.75),
                 Margin = new Thickness(0, 0, 7, 0),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -490,7 +501,7 @@ public sealed class Body
                 Text = $"{spool.Label} · {spool.DisplayName} {spool.RemainText}".Trim(),
                 FontSize = 11,
                 FontWeight = FontWeights.Medium,
-                Foreground = active is { Id: int id } && id == spool.Id ? Ui.Brush(Palette.AccentDeep) : new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
+                Foreground = active is { Id: int id } && id == spool.Id ? Ui.Brush(Palette.AccentDeep) : ThemeEngine.Current.NavTextBrush,
                 VerticalAlignment = VerticalAlignment.Center,
             });
             wrap.Children.Add(chip);
@@ -549,7 +560,7 @@ public sealed class Body
         {
             Text = $"Updated {Format.RelativeTime(status.UpdatedAt).Replace(" ago", "")}",
             FontSize = 10.5,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA0, 0xA6)),
+            Foreground = ThemeEngine.Current.TertiaryBrush,
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 2, 0, 4),
         };
@@ -564,6 +575,7 @@ public sealed class Body
             Text = session?.CurrentPhase.ToString() ?? "Idle",
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
         });
         content.Children.Add(new TextBlock
         {
@@ -636,8 +648,8 @@ public sealed class Body
             FontSize = 11.5,
             Padding = new Thickness(9, 5, 9, 5),
             Margin = new Thickness(0, 0, 6, 0),
-            Foreground = selected ? Brushes.White : new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
-            Background = selected ? Ui.Brush(Palette.AccentDeep) : new SolidColorBrush(Color.FromArgb(0x14, 0, 0, 0)),
+            Foreground = selected ? Brushes.White : ThemeEngine.Current.NavTextBrush,
+            Background = selected ? Ui.Brush(Palette.AccentDeep) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x14)),
             BorderThickness = new Thickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
         };

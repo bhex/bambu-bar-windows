@@ -15,7 +15,7 @@ public static class PageKit
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var left = new StackPanel();
-        left.Children.Add(new TextBlock { Text = title, FontSize = 26, FontWeight = FontWeights.Bold });
+        left.Children.Add(new TextBlock { Text = title, FontSize = 26, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush });
         if (subtitle is { Length: > 0 })
             left.Children.Add(new TextBlock { Text = subtitle, FontSize = 13, Foreground = Ui.Brush(Palette.Idle), Margin = new Thickness(0, 3, 0, 0) });
         Grid.SetColumn(left, 0);
@@ -53,8 +53,8 @@ public static class PageKit
         var button = new Button
         {
             Content = text,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
-            Background = new SolidColorBrush(Color.FromArgb(0x14, 0, 0, 0)),
+            Foreground = ThemeEngine.Current.NavTextBrush,
+            Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x14)),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(12, 7, 12, 7),
             Margin = new Thickness(0, 0, 8, 0),
@@ -81,7 +81,7 @@ public static class PageKit
             Width = 32,
             Height = 32,
             Foreground = Ui.Brush(Palette.Idle),
-            Background = new SolidColorBrush(Color.FromArgb(0x0D, 0, 0, 0)),
+            Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x0D)),
             BorderThickness = new Thickness(0),
             FontSize = 14,
             Cursor = System.Windows.Input.Cursors.Hand,

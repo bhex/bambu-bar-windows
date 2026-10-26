@@ -24,6 +24,7 @@ public sealed class MainWindow : Window
     private readonly TrayController _tray;
     private readonly ContentControl _pageHost;
     private readonly StackPanel _sidebarNav;
+    private readonly DockPanel _sidebar;
     private TextBlock _footerName, _footerLine;
     private string _section = SectionPrinter;
     private bool _addingPrinter;
@@ -46,8 +47,9 @@ public sealed class MainWindow : Window
         Height = 640;
         MinWidth = 820;
         MinHeight = 600;
+        SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = new SolidColorBrush(Color.FromRgb(0xFA, 0xFB, 0xFA));
+        Background = ThemeEngine.Current.WindowBackground;
         Icon = TrayIcon.AppImage();
 
         var grid = new Grid();
@@ -55,19 +57,19 @@ public sealed class MainWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         // MARK: sidebar
-        var sidebar = new DockPanel { Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xF3, 0xF1)) };
+        _sidebar = new DockPanel { Background = ThemeEngine.Current.SidebarBackground };
         _footerName = new TextBlock();
         _footerLine = new TextBlock();
         DockPanel.SetDock(footer(), Dock.Bottom);
-        sidebar.Children.Add(footer());
+        _sidebar.Children.Add(footer());
 
         _sidebarNav = new StackPanel { Margin = new Thickness(10, 14, 10, 0) };
         var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = _sidebarNav };
         DockPanel.SetDock(scroll, Dock.Top);
-        sidebar.Children.Add(scroll);
+        _sidebar.Children.Add(scroll);
 
-        grid.Children.Add(sidebar);
-        Grid.SetColumn(sidebar, 0);
+        grid.Children.Add(_sidebar);
+        Grid.SetColumn(_sidebar, 0);
 
         // MARK: page host
         _pageHost = new ContentControl();
@@ -83,6 +85,18 @@ public sealed class MainWindow : Window
 
         BuildNav();
         _store.Changed += () => Dispatcher.BeginInvoke(() => Refresh());
+        ThemeEngine.Current.Changed += ApplyTheme;
+        Closed += (_, _) => ThemeEngine.Current.Changed -= ApplyTheme;
+        Refresh(force: true);
+    }
+
+    /// <summary>Re-apply the theme to the live chrome and rebuild the page (pages build colors at creation time).</summary>
+    private void ApplyTheme()
+    {
+        Background = ThemeEngine.Current.WindowBackground;
+        _sidebar.Background = ThemeEngine.Current.SidebarBackground;
+        _footerName.Foreground = ThemeEngine.Current.PrimaryBrush;
+        BuildNav();
         Refresh(force: true);
     }
 
@@ -91,7 +105,7 @@ public sealed class MainWindow : Window
     private UIElement footer()
     {
         var content = new StackPanel { Margin = new Thickness(14, 10, 14, 12) };
-        _footerName = new TextBlock { FontSize = 12, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
+        _footerName = new TextBlock { FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush, TextTrimming = TextTrimming.CharacterEllipsis };
         _footerLine = new TextBlock { FontSize = 10.5, Foreground = Ui.Brush(Palette.Idle), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 1, 0, 0) };
         content.Children.Add(_footerName);
         content.Children.Add(_footerLine);
@@ -103,7 +117,7 @@ public sealed class MainWindow : Window
         _sidebarNav.Children.Clear();
         _sidebarNav.Children.Add(NavItem("Printer", _section == SectionPrinter, () => Navigate(SectionPrinter)));
         _sidebarNav.Children.Add(NavItem("Filament", _section == SectionFilament, () => Navigate(SectionFilament)));
-        _sidebarNav.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromArgb(0x22, 0, 0, 0)), Margin = new Thickness(6, 10, 6, 10) });
+        _sidebarNav.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x22)), Margin = new Thickness(6, 10, 6, 10) });
         _sidebarNav.Children.Add(NavItem("Settings", _section == SectionSettings, () => Navigate(SectionSettings)));
         _sidebarNav.Children.Add(NavItem("About", _section == SectionAbout, () => Navigate(SectionAbout)));
     }
@@ -117,7 +131,7 @@ public sealed class MainWindow : Window
                 Text = title,
                 FontSize = 13,
                 FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal,
-                Foreground = selected ? Ui.Brush(Palette.AccentDeep) : new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
+                Foreground = selected ? Ui.Brush(Palette.AccentDeep) : ThemeEngine.Current.NavTextBrush,
                 HorizontalAlignment = HorizontalAlignment.Left,
             },
             Background = selected ? new SolidColorBrush(Color.FromArgb(0x22, Palette.Accent.R, Palette.Accent.G, Palette.Accent.B)) : Brushes.Transparent,

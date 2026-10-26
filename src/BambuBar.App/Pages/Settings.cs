@@ -88,6 +88,34 @@ public sealed class SettingsPage
             11.5));
         root.Children.Add(Group("Controls", controls));
 
+        // MARK: appearance
+        var appearance = new StackPanel();
+        var theme = new ComboBox { Width = 260, FontSize = 12.5, HorizontalAlignment = HorizontalAlignment.Left };
+        string ThemeTitle(SettingsStore.ThemeMode m) => m switch
+        {
+            SettingsStore.ThemeMode.Light => "Light",
+            SettingsStore.ThemeMode.Dark => "Dark",
+            _ => "Automatic — follow Windows",
+        };
+        foreach (var m in new[] { SettingsStore.ThemeMode.Auto, SettingsStore.ThemeMode.Light, SettingsStore.ThemeMode.Dark })
+            theme.Items.Add(new ThemeChoice(ThemeTitle(m), m));
+        for (int i = 0; i < theme.Items.Count; i++)
+            if (((ThemeChoice)theme.Items[i]).Value == settings.ThemeModeSetting) { theme.SelectedIndex = i; break; }
+        theme.SelectionChanged += (_, _) =>
+        {
+            if (theme.SelectedItem is ThemeChoice choice)
+            {
+                settings.ThemeModeSetting = choice.Value;
+                settings.Save();
+                ThemeEngine.Current.SetMode(choice.Value);
+            }
+        };
+        appearance.Children.Add(Row("Theme", theme));
+        appearance.Children.Add(Ui.Body(
+            "Automatic picks light or dark from the Windows system appearance and follows it live when you change it in Windows Settings → Personalization.",
+            11.5));
+        root.Children.Add(Group("Appearance", appearance));
+
         return root;
     }
 
@@ -101,6 +129,7 @@ public sealed class SettingsPage
             Text = title,
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             Margin = new Thickness(0, 0, 0, 8),
         });
         var panel = Ui.Panel(content, radius: 16, padding: 16);
@@ -123,7 +152,7 @@ public sealed class SettingsPage
 
         var left = new StackPanel();
         var nameRow = new StackPanel { Orientation = Orientation.Horizontal };
-        nameRow.Children.Add(new TextBlock { Text = config.Name, FontSize = 12.5, FontWeight = FontWeights.SemiBold });
+        nameRow.Children.Add(new TextBlock { Text = config.Name, FontSize = 12.5, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
         if (_ctx.Store.HasMultiplePrinters && _ctx.Store.TraySession == session)
             nameRow.Children.Add(new TextBlock
             {
@@ -184,7 +213,8 @@ public sealed class SettingsPage
             Width = 220,
             FontSize = 12.5,
             Padding = new Thickness(7, 5, 7, 5),
-            Background = Brushes.White,
+            Background = ThemeEngine.Current.InputBackground,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
         void CommitName()
@@ -214,7 +244,8 @@ public sealed class SettingsPage
                 Width = 220,
                 FontSize = 12.5,
                 Padding = new Thickness(7, 5, 7, 5),
-                Background = Brushes.White,
+                Background = ThemeEngine.Current.InputBackground,
+                Foreground = ThemeEngine.Current.PrimaryBrush,
                 HorizontalAlignment = HorizontalAlignment.Left,
             };
             hostBox.TextChanged += (_, _) => _hostDraft = hostBox.Text;
@@ -431,6 +462,7 @@ public sealed class SettingsPage
         {
             Text = title,
             FontSize = 12.5,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 12, 0),
         };
@@ -483,6 +515,11 @@ public sealed class SettingsPage
     }
 
     private sealed record StyleChoice(string Label, SettingsStore.MenuBarStyle Value)
+    {
+        public override string ToString() => Label;
+    }
+
+    private sealed record ThemeChoice(string Label, SettingsStore.ThemeMode Value)
     {
         public override string ToString() => Label;
     }

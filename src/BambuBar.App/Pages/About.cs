@@ -36,8 +36,8 @@ public sealed class AboutPage
             Width = 96,
             Height = 96,
             CornerRadius = new CornerRadius(22),
-            Background = new SolidColorBrush(Color.FromArgb(0x0A, 0, 0, 0)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(0x1A, 0, 0, 0)),
+            Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x0A)),
+            BorderBrush = new SolidColorBrush(ThemeEngine.Current.Neutral(0x1A)),
             BorderThickness = new Thickness(0.75),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 24, 0),
@@ -66,7 +66,7 @@ public sealed class AboutPage
         header.Children.Add(art);
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(new TextBlock { Text = "Bambu Bar", FontSize = 30, FontWeight = FontWeights.Bold });
+        text.Children.Add(new TextBlock { Text = "Bambu Bar", FontSize = 30, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush });
         text.Children.Add(new TextBlock
         {
             Text = $"Version {ver} (build {build})",
@@ -78,7 +78,7 @@ public sealed class AboutPage
         {
             Text = "Your Bambu Lab printer, one click away in the system tray.",
             FontSize = 13,
-            Foreground = new SolidColorBrush(Color.FromArgb(0x66, 0, 0, 0)),
+            Foreground = new SolidColorBrush(ThemeEngine.Current.Neutral(0x66)),
             Margin = new Thickness(0, 1, 0, 0),
         });
         Grid.SetColumn(text, 1);

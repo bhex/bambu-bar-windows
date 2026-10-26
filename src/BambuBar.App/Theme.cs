@@ -146,15 +146,10 @@ public static class Format
 /// </summary>
 public static class Ui
 {
-    private static readonly Brush SecondaryText = new SolidColorBrush(Color.FromRgb(0x6E, 0x74, 0x7B));
-    private static readonly Brush Hairline = new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0x00, 0x00));
+    // Theme-aware: these resolve against the current light/dark palette at build time.
+    private static Brush SecondaryText => ThemeEngine.Current.SecondaryBrush;
+    private static Brush Hairline => ThemeEngine.Current.HairlineBrush;
     private static readonly System.Diagnostics.Stopwatch SharedClock = System.Diagnostics.Stopwatch.StartNew();
-
-    static Ui()
-    {
-        SecondaryText.Freeze();
-        Hairline.Freeze();
-    }
 
     /// <summary>A rounded card: a faint fill and hairline, like Control Center's modules.</summary>
     public static Border Panel(UIElement content, double radius = 18, double padding = 14, Color? tint = null)
@@ -165,14 +160,14 @@ public static class Ui
             Padding = new Thickness(padding),
             Background = new SolidColorBrush(tint is { } t
                 ? Color.FromArgb(0x1F, t.R, t.G, t.B)
-                : Color.FromArgb(0x0D, 0x00, 0x00, 0x00)),
+                : ThemeEngine.Current.Neutral(0x0D)),
             BorderBrush = Hairline,
             BorderThickness = new Thickness(0.75),
             Child = content,
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
                 Color = Colors.Black,
-                Opacity = 0.06,
+                Opacity = ThemeEngine.Current.ShadowOpacity,
                 BlurRadius = 12,
                 ShadowDepth = 2,
                 Direction = 270,
@@ -204,14 +199,14 @@ public static class Ui
         var outer = new Border
         {
             CornerRadius = new CornerRadius(radius),
-            Background = new SolidColorBrush(Color.FromArgb(0x0A, 0x00, 0x00, 0x00)),
+            Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x0A)),
             BorderBrush = Hairline,
             BorderThickness = new Thickness(0.75),
             Child = grid,
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
                 Color = Colors.Black,
-                Opacity = 0.06,
+                Opacity = ThemeEngine.Current.ShadowOpacity,
                 BlurRadius = 12,
                 ShadowDepth = 2,
                 Direction = 270,
@@ -242,6 +237,7 @@ public static class Ui
             Text = value,
             FontSize = 12.5,
             FontWeight = FontWeights.Medium,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             TextWrapping = TextWrapping.Wrap,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -267,7 +263,7 @@ public static class Ui
         {
             Height = height,
             CornerRadius = new CornerRadius(height / 2),
-            Background = trackOverride ?? new SolidColorBrush(Color.FromArgb(trackAlpha, 0x00, 0x00, 0x00)),
+            Background = trackOverride ?? new SolidColorBrush(ThemeEngine.Current.Neutral(trackAlpha)),
             ClipToBounds = true,
             Child = new Border
             {
@@ -297,7 +293,7 @@ public static class Ui
         {
             Height = height,
             CornerRadius = new CornerRadius(height / 2),
-            Background = new SolidColorBrush(Color.FromArgb(0x22, 0x00, 0x00, 0x00)),
+            Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x22)),
             ClipToBounds = true,
         };
         var runner = new Border

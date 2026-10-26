@@ -53,6 +53,9 @@ printer.
 Slicer imports (Bambu Studio / Orca Slicer) read `%APPDATA%\<Slicer>\config\*.conf`.
 App settings live under `%APPDATA%`.
 
+The UI follows a light, dark or automatic theme (Settings → Appearance); automatic tracks the
+Windows system appearance and updates live when it changes.
+
 ## Security model
 
 The macOS original's trust model is preserved:

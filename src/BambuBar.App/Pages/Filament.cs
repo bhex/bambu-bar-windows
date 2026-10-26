@@ -54,6 +54,7 @@ public sealed class FilamentPage
                     Text = unit.Title,
                     FontSize = 16,
                     FontWeight = FontWeights.SemiBold,
+                    Foreground = ThemeEngine.Current.PrimaryBrush,
                     VerticalAlignment = VerticalAlignment.Center,
                 };
                 Grid.SetColumn(title, 0);
@@ -76,7 +77,7 @@ public sealed class FilamentPage
             if (status.ExternalSpool is { IsLoaded: true } ext)
             {
                 var block = new StackPanel { Margin = new Thickness(0, 14, 0, 0) };
-                block.Children.Add(new TextBlock { Text = "External spool", FontSize = 16, FontWeight = FontWeights.SemiBold });
+                block.Children.Add(new TextBlock { Text = "External spool", FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
                 var grid = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
                 grid.Children.Add(SpoolCard(ext, active is { Id: int id } && id == ext.Id && status.State.IsActive()));
                 block.Children.Add(grid);
@@ -118,7 +119,7 @@ public sealed class FilamentPage
                     Width = 3,
                     Height = 3,
                     CornerRadius = new CornerRadius(2),
-                    Background = new SolidColorBrush(Color.FromArgb(0x44, 0, 0, 0)),
+                    Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x44)),
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(8, 0, 8, 0),
                 };
@@ -163,9 +164,9 @@ public sealed class FilamentPage
         {
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(7, 2, 7, 2),
-            Background = new SolidColorBrush(Color.FromArgb(0x14, 0, 0, 0)),
+            Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x14)),
             HorizontalAlignment = HorizontalAlignment.Right,
-            Child = new TextBlock { Text = spool.Label, FontSize = 11, FontWeight = FontWeights.Bold },
+            Child = new TextBlock { Text = spool.Label, FontSize = 11, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush },
         });
         if (active)
             right.Children.Add(new TextBlock
@@ -186,7 +187,7 @@ public sealed class FilamentPage
             Text = spool.IsLoaded ? spool.DisplayName : "Empty slot",
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
-            Foreground = spool.IsLoaded ? new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)) : Ui.Brush(Palette.Idle),
+            Foreground = spool.IsLoaded ? ThemeEngine.Current.PrimaryBrush : Ui.Brush(Palette.Idle),
             TextTrimming = TextTrimming.CharacterEllipsis,
         });
         content.Children.Add(new TextBlock
@@ -211,6 +212,7 @@ public sealed class FilamentPage
                 Text = pct is { } r ? $"{r}%" : "Unknown",
                 FontSize = 10.5,
                 FontWeight = FontWeights.SemiBold,
+                Foreground = ThemeEngine.Current.PrimaryBrush,
             };
             Grid.SetColumn(label, 0);
             Grid.SetColumn(value, 1);
@@ -268,7 +270,7 @@ public sealed class FilamentPage
         {
             Width = outerR * 2,
             Height = outerR * 2,
-            Stroke = new SolidColorBrush(Color.FromArgb(0x1A, 0, 0, 0)),
+            Stroke = new SolidColorBrush(ThemeEngine.Current.Neutral(0x1A)),
             StrokeThickness = ringWidth,
         });
 
@@ -278,7 +280,7 @@ public sealed class FilamentPage
         if (spool.Remain is { } remain && remain > 0 && color is not null)
         {
             root.Children.Add(RingArc(center, outerR, remain / 100.0, ringWidth,
-                active ? Ui.Brush(Palette.Accent) : new SolidColorBrush(Color.FromArgb(0x8C, 0, 0, 0))));
+                active ? Ui.Brush(Palette.Accent) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x8C))));
         }
         else if (active)
         {
@@ -328,7 +330,7 @@ public sealed class FilamentPage
                 Height = hub,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Fill = new SolidColorBrush(Color.FromArgb(0x8C, 0, 0, 0)),
+                Fill = new SolidColorBrush(ThemeEngine.Current.Neutral(0x8C)),
             });
         }
         else
@@ -338,7 +340,7 @@ public sealed class FilamentPage
             {
                 Width = innerR * 2,
                 Height = innerR * 2,
-                Stroke = new SolidColorBrush(Color.FromArgb(0x38, 0, 0, 0)),
+                Stroke = new SolidColorBrush(ThemeEngine.Current.Neutral(0x38)),
                 StrokeThickness = 1,
                 StrokeDashArray = new DoubleCollection { 2.5, 2.5 },
             };
@@ -378,7 +380,7 @@ public sealed class FilamentPage
         {
             Text = "◎",
             FontSize = 34,
-            Foreground = new SolidColorBrush(Color.FromArgb(0x33, 0, 0, 0)),
+            Foreground = new SolidColorBrush(ThemeEngine.Current.Neutral(0x33)),
             HorizontalAlignment = HorizontalAlignment.Center,
         });
         content.Children.Add(new TextBlock
@@ -386,6 +388,7 @@ public sealed class FilamentPage
             Text = title,
             FontSize = 15,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 8, 0, 0),
         });

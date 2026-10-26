@@ -93,6 +93,7 @@ public sealed class OverviewPage
             Text = status.JobName.Length > 0 ? status.JobName : "Print",
             FontSize = 24,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             Margin = new Thickness(0, 10, 0, 0),
         });
         panel.Children.Add(new TextBlock
@@ -108,7 +109,7 @@ public sealed class OverviewPage
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         bool indeterminate = status.State == JobState.Preparing && status.Progress < 2;
-        var percent = new TextBlock { Text = indeterminate ? "…" : $"{status.Progress}%", FontSize = 30, FontWeight = FontWeights.Bold };
+        var percent = new TextBlock { Text = indeterminate ? "…" : $"{status.Progress}%", FontSize = 30, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush };
         var bar = indeterminate
             ? Ui.Indeterminate(Ui.Brush(color), height: 8)
             : Ui.Gauge(status.Progress / 100.0, Ui.Brush(color), height: 8);
@@ -122,10 +123,11 @@ public sealed class OverviewPage
             VerticalAlignment = VerticalAlignment.Center,
         };
         Grid.SetColumn(percent, 0);
-        Grid.SetColumn(bar, 1);
         Grid.SetColumn(timing, 2);
         row.Children.Add(percent);
-        row.Children.Add(new Grid { Margin = new Thickness(10, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center, Children = { bar } });
+        var barHost = new Grid { Margin = new Thickness(10, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center, Children = { bar } };
+        Grid.SetColumn(barHost, 1);
+        row.Children.Add(barHost);
         row.Children.Add(timing);
         panel.Children.Add(row);
 
@@ -149,8 +151,8 @@ public sealed class OverviewPage
     {
         CornerRadius = new CornerRadius(10),
         Padding = new Thickness(10, 3, 10, 3),
-        Background = new SolidColorBrush(Color.FromArgb(0x0F, 0, 0, 0)),
-        Child = new TextBlock { Text = text, FontSize = 11.5, Foreground = new SolidColorBrush(Color.FromRgb(0x44, 0x44, 0x44)) },
+        Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x0F)),
+        Child = new TextBlock { Text = text, FontSize = 11.5, Foreground = ThemeEngine.Current.NavTextBrush },
     };
 
     private UIElement PrintControls(PrinterStatus status)
@@ -188,8 +190,8 @@ public sealed class OverviewPage
                 FontSize = 11.5,
                 Padding = new Thickness(10, 6, 10, 6),
                 Margin = new Thickness(0, 0, 6, 0),
-                Foreground = selected ? Brushes.White : new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)),
-                Background = selected ? Ui.Brush(Palette.AccentDeep) : new SolidColorBrush(Color.FromArgb(0x14, 0, 0, 0)),
+                Foreground = selected ? Brushes.White : ThemeEngine.Current.NavTextBrush,
+                Background = selected ? Ui.Brush(Palette.AccentDeep) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x14)),
                 BorderThickness = new Thickness(0),
                 Cursor = System.Windows.Input.Cursors.Hand,
             };
@@ -217,7 +219,7 @@ public sealed class OverviewPage
             Foreground = Ui.Brush(color),
             Margin = new Thickness(0, 0, 0, 3),
         });
-        content.Children.Add(new TextBlock { Text = issue.Message, FontSize = 12.5, TextWrapping = TextWrapping.Wrap });
+        content.Children.Add(new TextBlock { Text = issue.Message, FontSize = 12.5, Foreground = ThemeEngine.Current.PrimaryBrush, TextWrapping = TextWrapping.Wrap });
         return Ui.Panel(content, radius: 14, padding: 12, tint: color);
     }
 
@@ -246,6 +248,7 @@ public sealed class OverviewPage
         Grid.SetColumn(fan, 3);
         grid.Children.Add(fan);
 
+        block.Children.Add(grid);
         return block;
     }
 
@@ -258,6 +261,7 @@ public sealed class OverviewPage
             Text = current is { } c ? $"{(int)Math.Round(c)}°" : "–",
             FontSize = 21,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             Margin = new Thickness(0, 3, 0, 0),
         });
         string sub = readOnly ? "Read only"
@@ -267,7 +271,7 @@ public sealed class OverviewPage
         content.Children.Add(new TextBlock { Text = sub, FontSize = 10.5, Foreground = Ui.Brush(Palette.Idle), Margin = new Thickness(0, 1, 0, 6) });
         content.Children.Add(Ui.Gauge(
             (current ?? 0) / max,
-            Ui.Brush(readOnly ? Palette.Chamber : (target is { } tt && tt > 0 ? tint : Color.FromArgb(0x4D, 0, 0, 0))),
+            Ui.Brush(readOnly ? Palette.Chamber : (target is { } tt && tt > 0 ? tint : ThemeEngine.Current.Neutral(0x4D))),
             height: 4));
         return Ui.Panel(content, radius: 14, padding: 11);
     }
@@ -296,13 +300,15 @@ public sealed class OverviewPage
             Text = value is { } vv ? $"{vv}%" : "–",
             FontSize = 10.5,
             FontWeight = FontWeights.Medium,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
             HorizontalAlignment = HorizontalAlignment.Right,
         };
         Grid.SetColumn(label, 0);
-        Grid.SetColumn(bar, 1);
         Grid.SetColumn(valueText, 2);
         grid.Children.Add(label);
-        grid.Children.Add(new Grid { Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center, Children = { bar } });
+        var barHost = new Grid { Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center, Children = { bar } };
+        Grid.SetColumn(barHost, 1);
+        grid.Children.Add(barHost);
         grid.Children.Add(valueText);
         return grid;
     }
@@ -320,8 +326,8 @@ public sealed class OverviewPage
                 Width = 34,
                 Height = 34,
                 CornerRadius = new CornerRadius(10),
-                Background = color is { } c ? Ui.Brush(c) : new SolidColorBrush(Color.FromArgb(0x22, 0, 0, 0)),
-                BorderBrush = spool.IsLoaded ? new SolidColorBrush(Color.FromArgb(0x33, 0, 0, 0)) : Brushes.Transparent,
+                Background = color is { } c ? Ui.Brush(c) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x22)),
+                BorderBrush = spool.IsLoaded ? new SolidColorBrush(ThemeEngine.Current.Neutral(0x33)) : Brushes.Transparent,
                 BorderThickness = new Thickness(1),
                 Margin = new Thickness(0, 0, 0, 5),
             });
@@ -330,6 +336,7 @@ public sealed class OverviewPage
                 Text = spool.IsLoaded ? spool.DisplayName : "Empty",
                 FontSize = 11.5,
                 FontWeight = FontWeights.Medium,
+                Foreground = ThemeEngine.Current.PrimaryBrush,
             });
             card.Children.Add(new TextBlock
             {
@@ -366,6 +373,8 @@ public sealed class OverviewPage
         var rightPanel = Ui.Panel(right, radius: 16, padding: 13);
         rightPanel.Margin = new Thickness(10, 0, 0, 0);
 
+        Grid.SetColumn(leftPanel, 0);
+        Grid.SetColumn(rightPanel, 1);
         grid.Children.Add(leftPanel);
         grid.Children.Add(rightPanel);
         block.Children.Add(grid);
@@ -388,6 +397,7 @@ public sealed class OverviewPage
             Text = session is null ? "No printer set up" : session.CurrentPhase.ToString(),
             FontSize = 16,
             FontWeight = FontWeights.SemiBold,
+            Foreground = ThemeEngine.Current.PrimaryBrush,
         });
         content.Children.Add(new TextBlock
         {

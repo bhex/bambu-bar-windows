@@ -121,6 +121,9 @@ public sealed class App : System.Windows.Application
         _store = new PrinterStore();
         _store.Start();
 
+        // Resolve the configured light/dark/auto theme before any window is built (Auto = Windows system appearance).
+        ThemeEngine.Current.SetMode(_store.Settings.ThemeModeSetting);
+
         _notifier = new Notifier(_store, (title, body, isError) =>
             _tray?.ShowToast(body, isError ? System.Windows.Forms.ToolTipIcon.Warning : System.Windows.Forms.ToolTipIcon.Info));
         _notifier.Attach(_store);
@@ -147,6 +150,7 @@ public sealed class App : System.Windows.Application
         _notifier?.Detach();
         _power?.Dispose();
         _tray?.Dispose();
+        ThemeEngine.Current.Shutdown();
         if (_store is not null)
         {
             _store.Stop();
