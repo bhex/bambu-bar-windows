@@ -70,7 +70,7 @@ public sealed class PanelWindow : Window
         _ticker.Tick += (_, _) => Refresh(force: true);
         _ticker.Start();
 
-        Deactivated += (_, _) => Close();
+        Deactivated += (_, _) => Hide();
         ContentRendered += (_, _) => PositionNearTray();
     }
 
@@ -230,7 +230,7 @@ public sealed class Body
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         buttons.Children.Add(SmallButton("⟳", "Refresh", () => _store.Refresh()));
         buttons.Children.Add(SmallButton("⚙", "Settings", _openMainWindow));
-        buttons.Children.Add(SmallButton("✕", "Quit", _quit));
+
 
         Grid.SetColumn(left, 0);
         Grid.SetColumn(buttons, 1);

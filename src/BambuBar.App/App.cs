@@ -168,7 +168,6 @@ public sealed class App : System.Windows.Application
             return;
         }
         _panelWindow = new PanelWindow(_store!, OpenMainWindow, () => Shutdown());
-        _panelWindow.Closed += (_, _) => _panelWindow = null;
         _panelWindow.Show();
         _panelWindow.Activate();
     }
