@@ -99,118 +99,109 @@ public static class TrayIcon
             g.FillPath(bg, path);
         }
 
-        // MARK: glyph (white), scaled to the 24-unit grid — the macOS design is 18 units, so 4/3 scale
         var glyph = Color.White;
-        float s = 4f / 3f; // macOS 18 pt design → 24 unit chip grid
-        var frame = new RectangleF(2.25f * s * u, 1.75f * s * u, 13.5f * s * u, 14.5f * s * u);
-        using (var outline = Rounded(frame.X, frame.Y, frame.Width, frame.Height, 2.6f * s * u))
-        using (var pen = new Pen(glyph, 1.5f * u))
-        {
-            if (offline || state is null) pen.DashStyle = DashStyle.Dash;
-            g.DrawPath(pen, outline);
-        }
-        if (offline || state is null) return bitmap;
-
-        using var fillBrush = new SolidBrush(glyph);
-
-        // Gantry with the toolhead.
-        {
-            var gantry = new RectangleF(frame.Left + 1 * s * u, 5.2f * s * u - 0.4f * s * u, frame.Width - 2 * s * u, 0.8f * s * u);
-            g.FillRectangle(fillBrush, gantry);
-        }
-        // Build plate.
-        float plateY = 13.4f * s * u;
-        using (var plate = Rounded(frame.Left + 2.2f * s * u, plateY, frame.Width - 4.4f * s * u, 1.3f * s * u, 0.6f * s * u))
-        {
-            g.FillPath(fillBrush, plate);
-        }
+        float cx = size / 2f;
+        float cy = size / 2f;
 
         switch (state)
         {
-            case JobState.Paused:
-                foreach (var x in new[] { 6.6f, 9.9f })
-                {
-                    using var bar = Rounded(x * s * u, 7.2f * s * u, 1.6f * s * u, 4.8f * s * u, 0.8f * s * u);
-                    g.FillPath(fillBrush, bar);
-                }
+            case JobState.Printing or JobState.Preparing when fill > 0.02f:
+            {
+                // Thick progress arc (readable at 16px)
+                float arcR = size / 2f - 3f;
+                var bgPen = new Pen(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF), 3.5f);
+                bgPen.StartCap = LineCap.Round;
+                bgPen.EndCap = LineCap.Round;
+                g.DrawEllipse(bgPen, cx - arcR, cy - arcR, arcR * 2, arcR * 2);
+                bgPen.Dispose();
+
+                float sweep = (float)(fill * 350.0);
+                var arcPen = new Pen(Color.White, 3.5f);
+                arcPen.StartCap = LineCap.Round;
+                arcPen.EndCap = LineCap.Round;
+                g.DrawArc(arcPen, cx - arcR, cy - arcR, arcR * 2, arcR * 2, -90, sweep);
+                arcPen.Dispose();
+
+                // Large bold percentage number
+                int pct = (int)Math.Round(fill * 100);
+                string num = pct >= 100 ? "100" : $"{pct}";
+                float fontSize = pct >= 100 ? 9f : 11f;
+                using var font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
+                var sf = new StringFormat();
+                sf.Alignment = StringAlignment.Center;
+                sf.LineAlignment = StringAlignment.Center;
+                using var whiteBrush = new SolidBrush(Color.White);
+                g.DrawString(num, font, whiteBrush, cx, cy, sf);
+                sf.Dispose();
                 break;
+            }
+
+            case JobState.Finished:
+            {
+                var chkPen = new Pen(glyph, 3f * u);
+                chkPen.StartCap = LineCap.Round;
+                chkPen.EndCap = LineCap.Round;
+                g.DrawLines(chkPen, new[]
+                {
+                    new PointF(size * 0.25f, size * 0.52f),
+                    new PointF(size * 0.42f, size * 0.70f),
+                    new PointF(size * 0.75f, size * 0.34f),
+                });
+                chkPen.Dispose();
+                break;
+            }
+
+            case JobState.Paused:
+            {
+                float barW = size * 0.14f;
+                float barH = size * 0.42f;
+                float gap = size * 0.08f;
+                using var wb = new SolidBrush(glyph);
+                g.FillRectangle(wb, cx - gap / 2 - barW, cy - barH / 2, barW, barH);
+                g.FillRectangle(wb, cx + gap / 2, cy - barH / 2, barW, barH);
+                break;
+            }
 
             case JobState.Failed:
             {
-                using var exBar = Rounded(8.2f * s * u, 6.6f * s * u, 1.6f * s * u, 4.4f * s * u, 0.8f * s * u);
-                g.FillPath(fillBrush, exBar);
-                var exDot = new RectangleF(8.1f * s * u, 11.8f * s * u, 1.8f * s * u, 1.8f * s * u);
-                g.FillEllipse(fillBrush, exDot);
+                float barW = size * 0.13f;
+                float barH = size * 0.38f;
+                using var wb = new SolidBrush(glyph);
+                g.FillRectangle(wb, cx - barW / 2, size * 0.22f, barW, barH);
+                g.FillEllipse(wb, cx - barW / 2, size * 0.66f, barW, barW);
                 break;
             }
 
-            case JobState.Printing or JobState.Preparing or JobState.Finished:
+            default: // Idle, null, offline: simple printer frame
             {
-                float maxH = plateY - 5.2f * s * u - 2.6f * s * u;
-                float h = state == JobState.Finished ? maxH : Math.Max(0.9f * s * u, maxH * (float)fill);
-                using var part = Rounded(6.2f * s * u, plateY - h, 5.6f * s * u, h, 0.9f * s * u);
-                g.FillPath(fillBrush, part);
-                if (state != JobState.Finished)
-                {
-                    float headY = Math.Max(5.2f * s * u + 0.6f * s * u, plateY - h - 2.3f * s * u);
-                    using var head = Rounded(7.3f * s * u, headY, 3.4f * s * u, 1.8f * s * u, 0.5f * s * u);
-                    g.FillPath(fillBrush, head);
-                }
-                break;
-            }
+                float pad = size * 0.18f;
+                var frame = new RectangleF(pad, pad, size - 2 * pad, size - 2 * pad);
+                var outlinePen = new Pen(glyph, Math.Max(1.5f, size * 0.06f));
+                if (offline || state is null) outlinePen.DashStyle = DashStyle.Dash;
+                g.DrawRectangle(outlinePen, frame);
+                outlinePen.Dispose();
 
-            default: // Idle: just the toolhead parked at the top.
-            {
-                using var head = Rounded(frame.Left + 1.6f * s * u, 5.2f * s * u + 0.6f * s * u, 3.2f * s * u, 1.8f * s * u, 0.5f * s * u);
-                g.FillPath(fillBrush, head);
+                using var wb = new SolidBrush(glyph);
+                float headY = frame.Top + frame.Height * 0.28f;
+                float headW = frame.Width * 0.35f;
+                g.FillRectangle(wb, cx - headW / 2, headY, headW, size * 0.08f);
+                float plateY = frame.Bottom - frame.Height * 0.22f;
+                g.FillRectangle(wb, frame.Left + frame.Width * 0.15f, plateY, frame.Width * 0.7f, size * 0.06f);
                 break;
             }
         }
 
+        // Alert badge (top-right corner)
         if (alert && state != JobState.Failed)
         {
-            // Small badge in the corner: white disc, red mark.
-            var badge = new RectangleF(11.2f * s * u - 2 * u, 0.2f * s * u - 2 * u, 6.6f * s * u, 6.6f * s * u);
-            g.FillEllipse(Brushes.White, badge);
+            float badgeSize = size * 0.35f;
+            float bx = size - badgeSize * 0.7f;
+            float by = badgeSize * 0.2f;
+            g.FillEllipse(Brushes.White, bx, by, badgeSize, badgeSize);
             using var red = new SolidBrush(Color.FromArgb(0xE5, 0x4B, 0x4B));
-            var bx = badge.Left + badge.Width * 0.5f;
-            using var markBar = Rounded(bx - 0.6f * u, badge.Top + 1.6f * u, 1.2f * u, 2.6f * u, 0.6f * u);
-            g.FillPath(red, markBar);
-            g.FillEllipse(red, bx - 0.65f * u, badge.Top + 4.4f * u, 1.3f * u, 1.3f * u);
-        }
-
-        // MARK: progress ring + percentage (when actively printing)
-        if (state is JobState.Printing or JobState.Preparing && fill > 0.02f)
-        {
-            float cx = size / 2f;
-            float cy = size / 2f;
-            float ringRadius = size / 2f - 1.5f;
-            float ringWidth = 2.5f;
-
-            // Background ring (subtle)
-            using (var bgRing = new Pen(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF), ringWidth))
-            {
-                g.DrawEllipse(bgRing, cx - ringRadius, cy - ringRadius, ringRadius * 2, ringRadius * 2);
-            }
-
-            // Progress arc (bright)
-            float sweepAngle = (float)(fill * 360.0);
-            var ringPen = new Pen(Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF), ringWidth + 0.5f);
-            ringPen.StartCap = LineCap.Round;
-            ringPen.EndCap = LineCap.Round;
-            g.DrawArc(ringPen, cx - ringRadius, cy - ringRadius, ringRadius * 2, ringRadius * 2, -90, sweepAngle);
-            ringPen.Dispose();
-
-            // Percentage text (small, centred)
-            if (fill > 0.04f)
-            {
-                string pctText = $"{(int)Math.Round(fill * 100)}%";
-                using var font = new Font("Segoe UI", 5.5f, FontStyle.Bold);
-                using var textBrush = Brushes.White;
-                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                var textRect = new RectangleF(0, size / 2f - 8f, size, 16f);
-                g.DrawString(pctText, font, textBrush, textRect, sf);
-            }
+            float markW = badgeSize * 0.2f;
+            g.FillRectangle(red, bx + badgeSize * 0.4f, by + badgeSize * 0.22f, markW, badgeSize * 0.42f);
+            g.FillEllipse(red, bx + badgeSize * 0.4f, by + badgeSize * 0.7f, markW, markW);
         }
 
         return bitmap;
