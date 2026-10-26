@@ -18,7 +18,7 @@ The tray icon reflects the current print state:
 
 ![Tray icon states](docs/screenshots/tray-states.png)
 
-The mini panel was captured in `--demo` mode (built-in fake printer, no network); the main window is a live capture during a real print.
+Both screenshots are live captures from a real print session (main window mid-print, mini panel after it finished).
 
 ## Building
 
