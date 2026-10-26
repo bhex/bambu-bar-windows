@@ -18,6 +18,7 @@ public sealed class PanelWindow : Window
 {
     private readonly PrinterStore _store;
     private readonly Body _body;
+    private readonly StackPanel _root;
     private readonly TextBlock _toast;
     private readonly DispatcherTimer _ticker;
     private string? _lastKey;
@@ -29,7 +30,8 @@ public sealed class PanelWindow : Window
 
         Title = "Bambu Bar";
         Width = 390;
-        SizeToContent = SizeToContent.Height;
+        SizeToContent = SizeToContent.Manual;
+        Height = 160; // placeholder until RelayoutHeight() pins the measured content height
         ResizeMode = ResizeMode.NoResize;
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
@@ -40,8 +42,8 @@ public sealed class PanelWindow : Window
         Icon = TrayIcon.AppImage();
         ThemeEngine.Current.Changed += ApplyTheme;
 
-        var root = new StackPanel { Margin = new Thickness(12) };
-        root.Children.Add(_body.Host);
+        _root = new StackPanel { Margin = new Thickness(12) };
+        _root.Children.Add(_body.Host);
 
         _toast = new TextBlock
         {
@@ -51,9 +53,9 @@ public sealed class PanelWindow : Window
             Foreground = ThemeEngine.Current.SecondaryBrush,
             Visibility = Visibility.Collapsed,
         };
-        root.Children.Add(_toast);
+        _root.Children.Add(_toast);
 
-        root.Children.Add(new TextBlock
+        _root.Children.Add(new TextBlock
         {
             Text = "Double-click the tray icon for the full window",
             FontSize = 10.5,
@@ -62,7 +64,7 @@ public sealed class PanelWindow : Window
             Margin = new Thickness(0, 10, 0, 0),
         });
 
-        Content = root;
+        Content = _root;
 
         _store.Changed += () => Dispatcher.BeginInvoke(() => Refresh());
         _store.Toasted += toast => Dispatcher.BeginInvoke(() => ShowToast(toast));
@@ -91,11 +93,26 @@ public sealed class PanelWindow : Window
         Top = Math.Max(0, area.Bottom - h - 12);
     }
 
+    /// <summary>
+    /// Pin the borderless window's height to its content. A transparent, chrome-less WPF window
+    /// does not reliably re-run <c>SizeToContent</c> when content changes after first show, so the
+    /// panel could clip its lower controls; measuring the content directly keeps it correct.
+    /// </summary>
+    private void RelayoutHeight()
+    {
+        double width = Width > 0 ? Width : 390;
+        _root.Measure(new Size(width, double.PositiveInfinity));
+        double desired = _root.DesiredSize.Height;
+        if (desired > 1 && Math.Abs(desired - Height) > 0.5)
+            Height = desired;
+    }
+
     private void ShowToast(PrinterStore.Toast toast)
     {
         _toast.Text = toast.Message;
         _toast.Foreground = Ui.Brush(toast.IsError ? Palette.Failed : Palette.AccentDeep);
         _toast.Visibility = Visibility.Visible;
+        RelayoutHeight();
     }
 
     private void Refresh(bool force = false)
@@ -111,6 +128,7 @@ public sealed class PanelWindow : Window
         {
             _lastKey = key;
             _body.Rebuild(configured, online, session, status);
+            RelayoutHeight();
         }
         else if (status is not null)
         {
@@ -133,6 +151,11 @@ public sealed class Body
     private TextBlock? _jobName, _detail, _percent, _timing, _issueText, _updated;
     private Border? _progressBar;
     private bool _indeterminate;
+
+    /// <summary>Uniform vertical gap between the panel's stacked sections.</summary>
+    private const double SectionGap = 10;
+    /// <summary>Uniform width for every primary / danger action button.</summary>
+    private const double ActionButtonWidth = 110;
 
     public Body(PrinterStore store, Action openMainWindow, Action quit)
     {
@@ -197,7 +220,7 @@ public sealed class Body
 
     private UIElement Header(bool configured, PrinterSession? session, bool online)
     {
-        var grid = new Grid { Margin = new Thickness(4, 2, 4, 8) };
+        var grid = new Grid { Margin = new Thickness(4, 2, 4, 0) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -266,7 +289,7 @@ public sealed class Body
 
     private UIElement SetupPrompt()
     {
-        var panel = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 0) };
         panel.Children.Add(new TextBlock { Text = "No printer set up", FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
         panel.Children.Add(new TextBlock
         {
@@ -276,8 +299,10 @@ public sealed class Body
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 6, 0, 10),
         });
-        panel.Children.Add(PrimaryButton("Set Up…", _openMainWindow, width: 140));
-        return Ui.Panel(panel, radius: 20, padding: 14);
+        panel.Children.Add(PrimaryButton("Set Up…", _openMainWindow, width: ActionButtonWidth));
+        var card = Ui.Panel(panel, radius: 20, padding: 14);
+        card.Margin = new Thickness(0, SectionGap, 0, 0);
+        return card;
     }
 
     private UIElement JobHero(PrinterStatus status)
@@ -365,7 +390,9 @@ public sealed class Body
         percentRow.Children.Add(_timing);
         panel.Children.Add(percentRow);
 
-        return Ui.AccentPanel(panel, stateColor, radius: 16, padding: 16);
+        var hero = Ui.AccentPanel(panel, stateColor, radius: 16, padding: 16);
+        hero.Margin = new Thickness(0, SectionGap, 0, 0);
+        return hero;
     }
 
     private UIElement IssueBanner(PrinterIssue issue)
@@ -376,7 +403,7 @@ public sealed class Body
             IssueSeverity.Serious => Palette.Paused,
             _ => Palette.Preparing,
         };
-        var content = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var content = new StackPanel { Margin = new Thickness(0, 0, 0, 0) };
         content.Children.Add(new TextBlock
         {
             Text = issue.Severity.Title() + (issue.Id.Length > 0 ? $"  ·  {issue.Id}" : ""),
@@ -393,12 +420,14 @@ public sealed class Body
             TextWrapping = TextWrapping.Wrap,
         };
         content.Children.Add(_issueText);
-        return Ui.Panel(content, radius: 14, padding: 11, tint: color);
+        var card = Ui.Panel(content, radius: 14, padding: 11, tint: color);
+        card.Margin = new Thickness(0, SectionGap, 0, 0);
+        return card;
     }
 
     private UIElement Temperatures(PrinterStatus status)
     {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+        var grid = new Grid { Margin = new Thickness(0, SectionGap, 0, 0) };
         for (int i = 0; i < 3; i++)
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -522,21 +551,23 @@ public sealed class Body
             wrap.Children.Add(chip);
         }
         content.Children.Add(wrap);
-        return Ui.Panel(content, radius: 14, padding: 12);
+        var card = Ui.Panel(content, radius: 14, padding: 12);
+        card.Margin = new Thickness(0, SectionGap, 0, 0);
+        return card;
     }
 
     private UIElement PrintControls(PrinterStatus status)
     {
-        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var panel = new StackPanel { Margin = new Thickness(0, SectionGap, 0, 0) };
 
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
         if (status.State == JobState.Paused)
         {
-            row.Children.Add(PrimaryButton("Resume", () => _store.Resume(), width: 110));
+            row.Children.Add(PrimaryButton("Resume", () => _store.Resume(), width: ActionButtonWidth));
         }
         else if (status.State.IsActive())
         {
-            row.Children.Add(PrimaryButton("Pause", () => _store.Pause(), width: 110));
+            row.Children.Add(PrimaryButton("Pause", () => _store.Pause(), width: ActionButtonWidth));
         }
         if (status.State.IsActive())
         {
@@ -545,9 +576,9 @@ public sealed class Body
                 if (_store.Settings.ConfirmStop && !Confirm("Stop the print? The printer will be told to stop the current job."))
                     return;
                 _store.StopPrint();
-            }, width: 110));
+            }, width: ActionButtonWidth));
         }
-        row.Children.Add(PrimaryButton(status.ChamberLightOn is true ? "Light off" : "Light on", () => _store.ToggleLight(), width: 96));
+        row.Children.Add(PrimaryButton(status.ChamberLightOn is true ? "Light off" : "Light on", () => _store.ToggleLight(), width: ActionButtonWidth));
         panel.Children.Add(row);
 
         var speedRow = new StackPanel { Orientation = Orientation.Horizontal };
@@ -577,14 +608,14 @@ public sealed class Body
             FontSize = 10.5,
             Foreground = ThemeEngine.Current.TertiaryBrush,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 2, 0, 4),
+            Margin = new Thickness(0, SectionGap, 0, 0),
         };
         return _updated;
     }
 
     private UIElement ConnectionCard(PrinterSession? session)
     {
-        var content = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        var content = new StackPanel { Margin = new Thickness(0, 0, 0, 0) };
         content.Children.Add(new TextBlock
         {
             Text = session?.CurrentPhase.ToString() ?? "Idle",
@@ -601,10 +632,12 @@ public sealed class Body
             Margin = new Thickness(0, 6, 0, 10),
         });
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
-        buttons.Children.Add(PrimaryButton("Retry", () => _store.Refresh(), width: 110));
-        buttons.Children.Add(PrimaryButton("Set Up…", _openMainWindow, width: 110));
+        buttons.Children.Add(PrimaryButton("Retry", () => _store.Refresh(), width: ActionButtonWidth));
+        buttons.Children.Add(PrimaryButton("Set Up…", _openMainWindow, width: ActionButtonWidth));
         content.Children.Add(buttons);
-        return Ui.Panel(content, radius: 20, padding: 14);
+        var card = Ui.Panel(content, radius: 20, padding: 14);
+        card.Margin = new Thickness(0, SectionGap, 0, 0);
+        return card;
     }
 
     // MARK: - Buttons
@@ -661,8 +694,8 @@ public sealed class Body
         {
             Content = level.Title(),
             FontSize = 11.5,
-            Padding = new Thickness(9, 5, 9, 5),
-            Margin = new Thickness(0, 0, 6, 0),
+            Padding = new Thickness(9, 7, 9, 7),
+            Margin = new Thickness(0, 0, 8, 0),
             Foreground = selected ? Brushes.White : ThemeEngine.Current.NavTextBrush,
             Background = selected ? Ui.Brush(Palette.AccentDeep) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x14)),
             BorderThickness = new Thickness(0),
