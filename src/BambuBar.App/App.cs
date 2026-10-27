@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Windows;
 using BambuBar.Core.App;
 using BambuBar.Core.Demo;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Sessions;
 
@@ -121,6 +122,9 @@ public sealed class App : System.Windows.Application
         _store = new PrinterStore();
         _store.Start();
 
+        // Resolve the configured language before any window is built ("auto" follows the OS language).
+        Loc.Set(_store.Settings.LanguageSetting);
+
         // Resolve the configured light/dark/auto theme before any window is built (Auto = Windows system appearance).
         ThemeEngine.Current.SetMode(_store.Settings.ThemeModeSetting);
 
@@ -133,6 +137,12 @@ public sealed class App : System.Windows.Application
             resume: () => { foreach (var s in _store!.Sessions) s.Refresh(); });
 
         _tray = new TrayController(_store, OpenPanel, OpenMainWindow, () => Shutdown());
+
+        // Build the mini panel now (hidden) so the first tray click is a plain Show/Activate
+        // instead of paying full construction + first layout on the user's click.
+        _panelWindow = new PanelWindow(_store!, OpenMainWindow, () => Shutdown());
+        new System.Windows.Interop.WindowInteropHelper(_panelWindow).EnsureHandle(); // HwndSource exists before first show
+        _panelWindow.Refresh(force: true); // populate the body before it is ever shown
 
         StartPipeListener();
 
@@ -171,7 +181,9 @@ public sealed class App : System.Windows.Application
             panel.Activate();
             return;
         }
+        // Fallback for paths where pre-creation didn't happen (e.g. the first-instance handoff).
         _panelWindow = new PanelWindow(_store!, OpenMainWindow, () => Shutdown());
+        _panelWindow.Refresh(force: true);
         _panelWindow.Show();
         _panelWindow.Activate();
     }
@@ -285,23 +297,23 @@ public sealed class Notifier
                 if (status is null) continue;
                 var settings = _store.Settings;
                 string name = session.Config?.Name ?? "";
-                var job = status.JobName.Length > 0 ? status.JobName : "the print";
+                var job = status.JobName.Length > 0 ? status.JobName : Loc.T("notif.job_default");
 
                 switch (current)
                 {
                     case JobState.Finished when previous != JobState.Finished && settings.NotifyFinished:
-                        Post("Print finished", $"{job} · {name}", isError: false);
+                        Post(Loc.T("notif.finished_title"), $"{job} · {name}", isError: false);
                         break;
                     case JobState.Failed when previous != JobState.Failed && settings.NotifyFailed:
                         string reason = status.MostSevereIssue?.Message ?? "";
-                        Post("Print " + (status.Canceled ? "stopped" : "failed"),
+                        Post(status.Canceled ? Loc.T("notif.stopped_title") : Loc.T("notif.failed_title"),
                             (reason.Length > 0 ? reason + " · " : "") + job + " · " + name, isError: true);
                         break;
                     case JobState.Paused when previous != JobState.Paused && settings.NotifyPaused:
-                        Post("Print paused", $"{(status.StageText ?? "paused")} · {job} · {name}", isError: false);
+                        Post(Loc.T("notif.paused_title"), $"{(status.StageText ?? Loc.T("state.paused"))} · {job} · {name}", isError: false);
                         break;
                     case JobState.Printing or JobState.Preparing when !previous.IsActive() && settings.NotifyStarted:
-                        Post("Print started", $"{job} · {name}", isError: false);
+                        Post(Loc.T("notif.started_title"), $"{job} · {name}", isError: false);
                         break;
                 }
             }

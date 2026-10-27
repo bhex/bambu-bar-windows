@@ -1,5 +1,6 @@
 using BambuBar.Core.Discovery;
 using BambuBar.Core.Demo;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Protocol;
 using BambuBar.Core.Sessions;
@@ -217,16 +218,28 @@ public sealed class PrinterStore : IAsyncDisposable
         };
         session.Acknowledged += (command, ok, reason) =>
         {
+            // The printer echoes its own command name in the ack ("pause", "project_file"…);
+            // show the action in words instead of the wire name.
+            string label = command switch
+            {
+                "pause" => Loc.T("cmd.pause"),
+                "resume" => Loc.T("cmd.resume"),
+                "stop" => Loc.T("cmd.stop"),
+                "print_speed" => Loc.T("cmd.speed"),
+                "ledctrl" => Loc.T("cmd.light"),
+                "project_file" => Loc.T("cmd.start"),
+                _ => command,
+            };
             if (!ok)
             {
-                var message = reason is { Length: > 0 } r ? $"{command}: {r}" : $"The printer refused “{command}”.";
+                var message = reason is { Length: > 0 } r ? Loc.Tf("toast.refused_reason", label, r) : Loc.Tf("toast.refused", label);
                 if (statusIsLocked(session))
-                    message = "Controls need LAN Only mode with Developer Mode on the printer (Settings → Network).";
+                    message = Loc.T("toast.locked");
                 ShowToast(message, isError: !ok);
             }
             else
             {
-                ShowToast($"“{command}” accepted.", isError: false);
+                ShowToast(Loc.Tf("toast.accepted", label), isError: false);
             }
             RaiseChanged();
         };

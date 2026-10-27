@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using BambuBar.Core.App;
 using BambuBar.Core.Discovery;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Store;
 using Palette = BambuBar.App.Palette;
@@ -41,15 +42,15 @@ public sealed class SetupPage
             var header = new Grid();
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            header.Children.Add(new TextBlock { Text = "Add a Printer", FontSize = 26, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush });
-            var cancel = PageKit.Secondary("Cancel", () => _ctx.Window.Navigate(MainWindow.SectionPrinter));
+            header.Children.Add(new TextBlock { Text = Loc.T("setup.add_title"), FontSize = 26, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush });
+            var cancel = PageKit.Secondary(Loc.T("btn.cancel"), () => _ctx.Window.Navigate(MainWindow.SectionPrinter));
             cancel.Margin = new Thickness(0, 6, 0, 0);
             Grid.SetColumn(cancel, 1);
             header.Children.Add(cancel);
             root.Children.Add(header);
             root.Children.Add(new TextBlock
             {
-                Text = "Bambu Bar watches every printer you add; pick which one the tray shows in Settings.",
+                Text = Loc.T("setup.add_sub"),
                 FontSize = 12,
                 Foreground = Ui.Brush(Palette.Idle),
                 Margin = new Thickness(0, 4, 0, 16),
@@ -59,9 +60,9 @@ public sealed class SetupPage
         // MARK: step 1 — choose printer
         var step1 = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
         var step1Head = new StackPanel { Orientation = Orientation.Horizontal };
-        step1Head.Children.Add(new TextBlock { Text = "1  CHOOSE YOUR PRINTER", FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Ui.Brush(Palette.Idle), VerticalAlignment = VerticalAlignment.Center });
+        step1Head.Children.Add(new TextBlock { Text = Loc.T("setup.step1"), FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Ui.Brush(Palette.Idle), VerticalAlignment = VerticalAlignment.Center });
         step1Head.Children.Add(new System.Windows.Controls.ProgressBar { Width = 16, Height = 16, IsIndeterminate = store.Discovered.Count == 0, Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
-        step1Head.Children.Add(PageKit.Secondary("Search Again", () => store.SearchForPrinters()));
+        step1Head.Children.Add(PageKit.Secondary(Loc.T("btn.search"), () => store.SearchForPrinters()));
         step1.Children.Add(step1Head);
 
         var newPrinters = store.Discovered.Where(d => store.Session(d.Serial) is null).ToList();
@@ -72,7 +73,7 @@ public sealed class SetupPage
         {
             step1.Children.Add(Ui.Panel(new TextBlock
             {
-                Text = "Looking for printers on this network. Printers announce themselves every few seconds; make sure yours is on and on the same network as this PC.",
+                Text = Loc.T("setup.searching"),
                 FontSize = 12,
                 Foreground = Ui.Brush(Palette.Idle),
                 TextWrapping = TextWrapping.Wrap,
@@ -93,7 +94,7 @@ public sealed class SetupPage
 
         // MARK: step 2 — access code
         var step2 = new StackPanel { Margin = new Thickness(0, 18, 0, 0) };
-        step2.Children.Add(Ui.SectionLabel("2  Access code"));
+        step2.Children.Add(Ui.SectionLabel(Loc.T("setup.step2")));
         step2.Children.Add(CodeSection());
         root.Children.Add(step2);
 
@@ -102,7 +103,7 @@ public sealed class SetupPage
         {
             var toggle = new CheckBox
             {
-                Content = "Open Bambu Bar at login (it starts quietly in the tray)",
+                Content = Loc.T("setup.open_at_login"),
                 IsChecked = _s.OpenAtLogin,
                 FontSize = 12.5,
                 Margin = new Thickness(0, 18, 0, 0),
@@ -114,7 +115,7 @@ public sealed class SetupPage
 
         // MARK: connect
         var footer = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 20, 0, 0) };
-        var connect = PageKit.Primary("Connect", Connect, width: 150);
+        var connect = PageKit.Primary(Loc.T("btn.connect"), Connect, width: 150);
         footer.Children.Add(connect);
         _connectButton = connect;
         UpdateConnect(); // reflect a draft restored from a previous visit
@@ -171,10 +172,10 @@ public sealed class SetupPage
         grid.Children.Add(art);
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(new TextBlock { Text = "Welcome to Bambu Bar", FontSize = 28, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush });
+        text.Children.Add(new TextBlock { Text = Loc.T("setup.hero_title"), FontSize = 28, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush });
         text.Children.Add(new TextBlock
         {
-            Text = "Your printer's progress, temperatures and filament, one click away in the system tray. Bambu Bar talks to the printer directly over your network: no account, no cloud.",
+            Text = Loc.T("setup.hero_desc"),
             FontSize = 13.5,
             Foreground = Ui.Brush(Palette.Idle),
             TextWrapping = TextWrapping.Wrap,
@@ -211,7 +212,7 @@ public sealed class SetupPage
         name.Children.Add(new TextBlock { Text = printer.Name.Length > 0 ? printer.Name : printer.Serial, FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
         name.Children.Add(new TextBlock
         {
-            Text = $"Bambu Lab {printer.ModelName} · {printer.Host} · {printer.Serial}" + (printer.ConnectMode is { Length: > 0 } m ? (m.Equals("lan", StringComparison.OrdinalIgnoreCase) ? " · LAN Only" : " · Cloud") : ""),
+            Text = $"Bambu Lab {printer.ModelName} · {printer.Host} · {printer.Serial}" + (printer.ConnectMode is { Length: > 0 } m ? (m.Equals("lan", StringComparison.OrdinalIgnoreCase) ? " · " + Loc.T("setup.mode_lan") : " · " + Loc.T("setup.mode_cloud")) : ""),
             FontSize = 11.5,
             Foreground = Ui.Brush(Palette.Idle),
         });
@@ -226,7 +227,7 @@ public sealed class SetupPage
                 Padding = new Thickness(8, 2, 8, 2),
                 Background = Ui.Brush(Color.FromArgb(0x1F, Palette.Accent.R, Palette.Accent.G, Palette.Accent.B)),
                 VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = $"Code in {slicer.Source}", FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Ui.Brush(Palette.AccentDeep) },
+                Child = new TextBlock { Text = Loc.Tf("setup.code_in", slicer.Source), FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Ui.Brush(Palette.AccentDeep) },
             };
             Grid.SetColumn(badge, 2);
             row.Children.Add(badge);
@@ -278,11 +279,11 @@ public sealed class SetupPage
     private UIElement ManualEntry()
     {
         var content = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
-        content.Children.Add(new TextBlock { Text = "Enter address manually", FontSize = 12, FontWeight = FontWeights.Medium, Foreground = ThemeEngine.Current.PrimaryBrush, Margin = new Thickness(0, 0, 0, 8) });
+        content.Children.Add(new TextBlock { Text = Loc.T("setup.manual_title"), FontSize = 12, FontWeight = FontWeights.Medium, Foreground = ThemeEngine.Current.PrimaryBrush, Margin = new Thickness(0, 0, 0, 8) });
 
-        content.Children.Add(ManualField("IP address", () => _s.Host, v => _s.Host = v, "192.168.1.50"));
-        content.Children.Add(ManualField("Serial number", () => _s.Serial, v => _s.Serial = v, "22E…"));
-        content.Children.Add(ManualField("Name", () => _s.Name, v => _s.Name = v, "My P2S"));
+        content.Children.Add(ManualField(Loc.T("setup.ip"), () => _s.Host, v => _s.Host = v, "192.168.1.50"));
+        content.Children.Add(ManualField(Loc.T("setup.serial"), () => _s.Serial, v => _s.Serial = v, "22E…"));
+        content.Children.Add(ManualField(Loc.T("setup.name"), () => _s.Name, v => _s.Name = v, "My P2S"));
         return content;
     }
 
@@ -321,15 +322,15 @@ public sealed class SetupPage
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var key = new TextBlock { Text = "🔑", FontSize = 15, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
             var found = new StackPanel();
-            found.Children.Add(new TextBlock { Text = $"Found in {source}", FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
+            found.Children.Add(new TextBlock { Text = Loc.Tf("setup.found_in", source), FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
             found.Children.Add(new TextBlock
             {
-                Text = "Bambu Bar uses the access code saved there for this printer. It's kept in the Windows Credential Manager and only ever sent to the printer.",
+                Text = Loc.T("setup.found_desc"),
                 FontSize = 11.5,
                 Foreground = Ui.Brush(Palette.Idle),
                 TextWrapping = TextWrapping.Wrap,
             });
-            var button = PageKit.Secondary("Type a Code Instead", () => { var s = _s; s.CodeSource = null; s.Code = ""; s.AlternativeCodes = new List<string>(); Rebuild(); });
+            var button = PageKit.Secondary(Loc.T("btn.type_code"), () => { var s = _s; s.CodeSource = null; s.Code = ""; s.AlternativeCodes = new List<string>(); Rebuild(); });
             button.Margin = new Thickness(10, 0, 0, 0);
             Grid.SetColumn(key, 0);
             Grid.SetColumn(found, 1);
@@ -357,7 +358,7 @@ public sealed class SetupPage
         content.Children.Add(box);
         content.Children.Add(new TextBlock
         {
-            Text = "On the printer's screen open Settings → Network (the Wi-Fi/LAN page) and read the Access Code. It's stored in the Credential Manager and only ever sent to the printer.",
+            Text = Loc.T("setup.code_hint"),
             FontSize = 11.5,
             Foreground = Ui.Brush(Palette.Idle),
             TextWrapping = TextWrapping.Wrap,
@@ -372,15 +373,15 @@ public sealed class SetupPage
         import.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var icon = new TextBlock { Text = "⬇", FontSize = 14, Foreground = Ui.Brush(Palette.Idle), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
         var text = new StackPanel();
-        text.Children.Add(new TextBlock { Text = "Bambu Studio or OrcaSlicer on another PC?", FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
+        text.Children.Add(new TextBlock { Text = Loc.T("setup.import_title"), FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
         text.Children.Add(new TextBlock
         {
-            Text = _s.ImportNote ?? "Choose its settings file — it's in %APPDATA%\\BambuStudio or %APPDATA%\\OrcaSlicer under that user's home folder.",
+            Text = _s.ImportNote ?? Loc.T("setup.import_desc"),
             FontSize = 11.5,
             Foreground = Ui.Brush(Palette.Idle),
             TextWrapping = TextWrapping.Wrap,
         });
-        var choose = PageKit.Secondary("Choose File…", ChooseSettingsFile);
+        var choose = PageKit.Secondary(Loc.T("btn.choose_file"), ChooseSettingsFile);
         choose.Margin = new Thickness(10, 0, 0, 0);
         Grid.SetColumn(icon, 0);
         Grid.SetColumn(text, 1);
@@ -396,7 +397,7 @@ public sealed class SetupPage
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Choose Bambu Studio's or OrcaSlicer's settings",
+            Title = Loc.T("setup.dialog_title"),
             Filter = "Slicer settings (*.conf)|*.conf|All files (*.*)|*.*",
         };
         if (dialog.ShowDialog() != true) return;
@@ -409,7 +410,7 @@ public sealed class SetupPage
         var found = SlicerImport.Read(path, Path.GetFileName(Path.GetDirectoryName(path)) ?? "slicer");
         if (found.Count == 0)
         {
-            _s.ImportNote = $"No access codes found in {Path.GetFileName(path)}.";
+            _s.ImportNote = Loc.Tf("setup.import_none", Path.GetFileName(path));
             Rebuild();
             return;
         }

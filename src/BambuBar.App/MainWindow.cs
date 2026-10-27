@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using BambuBar.Core.App;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Sessions;
 using Palette = BambuBar.App.Palette;
@@ -86,6 +87,7 @@ public sealed class MainWindow : Window
         BuildNav();
         _store.Changed += () => Dispatcher.BeginInvoke(() => Refresh());
         ThemeEngine.Current.Changed += ApplyTheme;
+        Loc.Changed += () => Dispatcher.BeginInvoke(() => { BuildNav(); Refresh(force: true); });
         Closed += (_, _) => ThemeEngine.Current.Changed -= ApplyTheme;
         Refresh(force: true);
     }
@@ -115,11 +117,11 @@ public sealed class MainWindow : Window
     private void BuildNav()
     {
         _sidebarNav.Children.Clear();
-        _sidebarNav.Children.Add(NavItem("Printer", _section == SectionPrinter, () => Navigate(SectionPrinter)));
-        _sidebarNav.Children.Add(NavItem("Filament", _section == SectionFilament, () => Navigate(SectionFilament)));
+        _sidebarNav.Children.Add(NavItem(Loc.T("nav.printer"), _section == SectionPrinter, () => Navigate(SectionPrinter)));
+        _sidebarNav.Children.Add(NavItem(Loc.T("nav.filament"), _section == SectionFilament, () => Navigate(SectionFilament)));
         _sidebarNav.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(ThemeEngine.Current.Neutral(0x22)), Margin = new Thickness(6, 10, 6, 10) });
-        _sidebarNav.Children.Add(NavItem("Settings", _section == SectionSettings, () => Navigate(SectionSettings)));
-        _sidebarNav.Children.Add(NavItem("About", _section == SectionAbout, () => Navigate(SectionAbout)));
+        _sidebarNav.Children.Add(NavItem(Loc.T("nav.settings"), _section == SectionSettings, () => Navigate(SectionSettings)));
+        _sidebarNav.Children.Add(NavItem(Loc.T("nav.about"), _section == SectionAbout, () => Navigate(SectionAbout)));
     }
 
     private UIElement NavItem(string title, bool selected, Action action)
@@ -174,8 +176,8 @@ public sealed class MainWindow : Window
         // Sidebar footer (cheap to update always).
         if (_store.Sessions.Count == 0)
         {
-            _footerName.Text = "No printer";
-            _footerLine.Text = "Set up to begin";
+            _footerName.Text = Loc.T("panel.no_printer");
+            _footerLine.Text = Loc.T("mw.setup_cta");
         }
         else
         {
@@ -186,7 +188,7 @@ public sealed class MainWindow : Window
             }
             else
             {
-                _footerLine.Text = status is null ? (session?.PhaseReason ?? "Connecting…") : "Offline";
+                _footerLine.Text = status is null ? (session?.PhaseReason ?? Loc.T("link.connecting")) : Loc.T("link.offline");
             }
         }
 

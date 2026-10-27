@@ -89,6 +89,8 @@ public sealed class SettingsStore
     public bool ConfirmStop { get; set; } = true;
     public bool OpenAtLogin { get; set; }
     public ThemeMode ThemeModeSetting { get; set; } = ThemeMode.Auto;
+    /// <summary>Language code (e.g. "fi"); null = follow the Windows system language.</summary>
+    public string? LanguageSetting { get; set; }
 
     private static readonly JsonSerializerOptions Options = new()
     {

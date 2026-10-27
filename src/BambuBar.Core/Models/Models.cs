@@ -1,3 +1,5 @@
+using BambuBar.Core.I18n;
+
 namespace BambuBar.Core.Models;
 
 /// <summary>What the printer is doing, folded from <c>print.gcode_state</c>.</summary>
@@ -31,12 +33,12 @@ public static partial class JobStateExtensions
 
     public static string Title(this JobState state) => state switch
     {
-        JobState.Idle => "Ready",
-        JobState.Preparing => "Preparing",
-        JobState.Printing => "Printing",
-        JobState.Paused => "Paused",
-        JobState.Finished => "Finished",
-        JobState.Failed => "Failed",
+        JobState.Idle => Loc.T("state.idle"),
+        JobState.Preparing => Loc.T("state.preparing"),
+        JobState.Printing => Loc.T("state.printing"),
+        JobState.Paused => Loc.T("state.paused"),
+        JobState.Finished => Loc.T("state.finished"),
+        JobState.Failed => Loc.T("state.failed"),
         _ => state.ToString(),
     };
 }
@@ -54,10 +56,10 @@ public static class SpeedLevelExtensions
 {
     public static string Title(this SpeedLevel level) => level switch
     {
-        SpeedLevel.Silent => "Silent",
-        SpeedLevel.Standard => "Standard",
-        SpeedLevel.Sport => "Sport",
-        SpeedLevel.Ludicrous => "Ludicrous",
+        SpeedLevel.Silent => Loc.T("speed.silent"),
+        SpeedLevel.Standard => Loc.T("speed.standard"),
+        SpeedLevel.Sport => Loc.T("speed.sport"),
+        SpeedLevel.Ludicrous => Loc.T("speed.ludicrous"),
         _ => level.ToString(),
     };
 
@@ -179,10 +181,10 @@ public static class IssueSeverityExtensions
 {
     public static string Title(this IssueSeverity severity) => severity switch
     {
-        IssueSeverity.Fatal => "Error",
-        IssueSeverity.Serious => "Warning",
-        IssueSeverity.Common => "Notice",
-        _ => "Info",
+        IssueSeverity.Fatal => Loc.T("issue.fatal"),
+        IssueSeverity.Serious => Loc.T("issue.serious"),
+        IssueSeverity.Common => Loc.T("issue.common"),
+        _ => Loc.T("issue.info"),
     };
 }
 
@@ -239,14 +241,17 @@ public class PrinterStatus
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
     /// <summary>"Canceled" for a job someone stopped, otherwise the state's own title.</summary>
-    public string StateTitle => State == JobState.Failed && Canceled ? "Canceled" : State.Title();
+    public string StateTitle => State == JobState.Failed && Canceled ? Loc.T("detail.canceled") : State.Title();
 
+    /// <summary>The printer's stage, localized when a catalog has it, else the built-in English name.</summary>
     public string? StageText
     {
         get
         {
             if (StageId is null or 255 or (-1)) return null;
-            return StageNames.TryGetValue(StageId.Value, out var name) ? name : null;
+            int id = StageId.Value;
+            if (Loc.Has($"stage.{id}")) return Loc.T($"stage.{id}");
+            return StageNames.TryGetValue(id, out var name) ? name : null;
         }
     }
 
@@ -254,13 +259,13 @@ public class PrinterStatus
     public string DetailText => State switch
     {
         JobState.Printing => StageText is { } st && StageId != 0 ? st
-            : TotalLayers > 0 ? $"Layer {Layer} of {TotalLayers}"
-            : "Printing",
-        JobState.Preparing => "Loading 3MF & slicing…",
-        JobState.Paused => StageText is { } st && st.StartsWith("Paused") ? st : "Paused",
-        JobState.Finished => "Finished",
-        JobState.Failed => Canceled ? "Canceled" : (Issues.Count > 0 ? Issues[0].Message : "Print failed"),
-        _ => StageText ?? "Ready to print",
+            : TotalLayers > 0 ? Loc.Tf("detail.layer_of", Layer, TotalLayers)
+            : Loc.T("state.printing"),
+        JobState.Preparing => Loc.T("detail.preparing"),
+        JobState.Paused => StageText ?? Loc.T("state.paused"),
+        JobState.Finished => Loc.T("state.finished"),
+        JobState.Failed => Canceled ? Loc.T("detail.canceled") : (Issues.Count > 0 ? Issues[0].Message : Loc.T("detail.failed")),
+        _ => StageText ?? Loc.T("detail.ready"),
     };
 
     public Spool? ActiveSpool
@@ -360,11 +365,11 @@ public class JobRecord
 
     public string ResultTitle => Result switch
     {
-        Outcome.Running => "In progress",
-        Outcome.Finished => "Finished",
-        Outcome.Failed => "Failed",
-        Outcome.Canceled => "Canceled",
-        _ => "Ended",
+        Outcome.Running => Loc.T("outcome.running"),
+        Outcome.Finished => Loc.T("state.finished"),
+        Outcome.Failed => Loc.T("state.failed"),
+        Outcome.Canceled => Loc.T("detail.canceled"),
+        _ => Loc.T("outcome.ended"),
     };
 
     public TimeSpan? Duration => EndedAt is { } end ? end - StartedAt : null;

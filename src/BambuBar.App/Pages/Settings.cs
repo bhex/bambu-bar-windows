@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using BambuBar.Core.App;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Sessions;
 using BambuBar.Core.Store;
@@ -45,57 +46,57 @@ public sealed class SettingsPage
             MaxWidth = 860,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        root.Children.Add(PageKit.Header("Settings"));
+        root.Children.Add(PageKit.Header(Loc.T("set.title")));
 
         // MARK: printers
         var printers = new StackPanel();
         if (store.Sessions.Count == 0)
         {
-            printers.Children.Add(Ui.Body("No printer set up yet."));
+            printers.Children.Add(Ui.Body(Loc.T("set.no_printer")));
         }
         else
         {
             foreach (var s in store.Sessions)
                 printers.Children.Add(PrinterRow(s));
             if (store.Sessions.Count > 1)
-                printers.Children.Add(Ui.Body("Bambu Bar watches all of them at once.", 11.5));
+                printers.Children.Add(Ui.Body(Loc.T("set.multi"), 11.5));
         }
         var addRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0) };
-        addRow.Children.Add(PageKit.Secondary("Add Printer…", () => _window.BeginAddPrinter()));
+        addRow.Children.Add(PageKit.Secondary(Loc.T("btn.add_printer"), () => _window.BeginAddPrinter()));
         printers.Children.Add(addRow);
-        root.Children.Add(Group("Printers", printers));
+        root.Children.Add(Group(Loc.T("group.printers"), printers));
 
         // MARK: the selected printer
         if (config is not null)
-            root.Children.Add(Group(store.HasMultiplePrinters ? config.Name : "Printer", PrinterGroup(session!, config)));
+            root.Children.Add(Group(store.HasMultiplePrinters ? config.Name : Loc.T("group.printer"), PrinterGroup(session!, config)));
 
         // MARK: tray
-        root.Children.Add(Group("Tray", TrayGroup(settings, store.Sessions)));
+        root.Children.Add(Group(Loc.T("group.tray"), TrayGroup(settings, store.Sessions)));
 
         // MARK: notifications
         var notifications = new StackPanel();
-        notifications.Children.Add(Toggle("Print finished", settings.NotifyFinished, v => { settings.NotifyFinished = v; settings.Save(); }));
-        notifications.Children.Add(Toggle("Print failed, canceled or an error", settings.NotifyFailed, v => { settings.NotifyFailed = v; settings.Save(); }));
-        notifications.Children.Add(Toggle("Print paused (filament runout, user)", settings.NotifyPaused, v => { settings.NotifyPaused = v; settings.Save(); }));
-        notifications.Children.Add(Toggle("Print started", settings.NotifyStarted, v => { settings.NotifyStarted = v; settings.Save(); }));
-        root.Children.Add(Group("Notifications", notifications));
+        notifications.Children.Add(Toggle(Loc.T("notif.finished"), settings.NotifyFinished, v => { settings.NotifyFinished = v; settings.Save(); }));
+        notifications.Children.Add(Toggle(Loc.T("notif.failed"), settings.NotifyFailed, v => { settings.NotifyFailed = v; settings.Save(); }));
+        notifications.Children.Add(Toggle(Loc.T("notif.paused"), settings.NotifyPaused, v => { settings.NotifyPaused = v; settings.Save(); }));
+        notifications.Children.Add(Toggle(Loc.T("notif.started"), settings.NotifyStarted, v => { settings.NotifyStarted = v; settings.Save(); }));
+        root.Children.Add(Group(Loc.T("group.notifications"), notifications));
 
         // MARK: controls
         var controls = new StackPanel();
-        controls.Children.Add(Toggle("Ask before stopping a print", settings.ConfirmStop, v => { settings.ConfirmStop = v; settings.Save(); }));
+        controls.Children.Add(Toggle(Loc.T("controls.confirm_stop"), settings.ConfirmStop, v => { settings.ConfirmStop = v; settings.Save(); }));
         controls.Children.Add(Ui.Body(
-            "Pause, stop and speed changes need LAN Only mode with Developer Mode on the printer (Settings → Network on its screen). Reading status and the chamber light work in any mode.",
+            Loc.T("controls.note"),
             11.5));
-        root.Children.Add(Group("Controls", controls));
+        root.Children.Add(Group(Loc.T("group.controls"), controls));
 
         // MARK: appearance
         var appearance = new StackPanel();
         var theme = new ComboBox { Width = 260, FontSize = 12.5, HorizontalAlignment = HorizontalAlignment.Left };
         string ThemeTitle(SettingsStore.ThemeMode m) => m switch
         {
-            SettingsStore.ThemeMode.Light => "Light",
-            SettingsStore.ThemeMode.Dark => "Dark",
-            _ => "Automatic — follow Windows",
+            SettingsStore.ThemeMode.Light => Loc.T("theme.light"),
+            SettingsStore.ThemeMode.Dark => Loc.T("theme.dark"),
+            _ => Loc.T("theme.auto"),
         };
         foreach (var m in new[] { SettingsStore.ThemeMode.Auto, SettingsStore.ThemeMode.Light, SettingsStore.ThemeMode.Dark })
             theme.Items.Add(new ThemeChoice(ThemeTitle(m), m));
@@ -110,11 +111,36 @@ public sealed class SettingsPage
                 ThemeEngine.Current.SetMode(choice.Value);
             }
         };
-        appearance.Children.Add(Row("Theme", theme));
+        appearance.Children.Add(Row(Loc.T("row.theme"), theme));
         appearance.Children.Add(Ui.Body(
-            "Automatic picks light or dark from the Windows system appearance and follows it live when you change it in Windows Settings → Personalization.",
+            Loc.T("theme.auto_desc"),
             11.5));
-        root.Children.Add(Group("Appearance", appearance));
+
+        var language = new ComboBox { Width = 260, FontSize = 12.5, HorizontalAlignment = HorizontalAlignment.Left };
+        language.Items.Add(new LangChoice(Loc.T("lang.auto"), null));
+        foreach (var code in Loc.Supported)
+            language.Items.Add(new LangChoice(Loc.NativeNames[code], code));
+        string? currentSetting = settings.LanguageSetting;
+        for (int i = 0; i < language.Items.Count; i++)
+        {
+            var item = (LangChoice)language.Items[i];
+            if (currentSetting is null ? item.Code is null : string.Equals(item.Code, currentSetting, StringComparison.OrdinalIgnoreCase))
+            { language.SelectedIndex = i; break; }
+        }
+        language.SelectionChanged += (_, _) =>
+        {
+            if (language.SelectedItem is LangChoice choice)
+            {
+                settings.LanguageSetting = choice.Code;
+                settings.Save();
+                Loc.Set(choice.Code); // Loc.Changed re-renders both windows
+            }
+        };
+        appearance.Children.Add(Row(Loc.T("row.language"), language));
+        appearance.Children.Add(Ui.Body(
+            Loc.T("lang.desc"),
+            11.5));
+        root.Children.Add(Group(Loc.T("group.appearance"), appearance));
 
         return root;
     }
@@ -156,7 +182,7 @@ public sealed class SettingsPage
         if (_ctx.Store.HasMultiplePrinters && _ctx.Store.TraySession == session)
             nameRow.Children.Add(new TextBlock
             {
-                Text = "  ·  in tray",
+                Text = "  ·  " + Loc.T("set.in_tray"),
                 FontSize = 11,
                 Foreground = Ui.Brush(Palette.Idle),
             });
@@ -191,7 +217,7 @@ public sealed class SettingsPage
 
         if (_ctx.Store.HasMultiplePrinters)
         {
-            var button = PageKit.Secondary(isCurrent ? "Showing" : "Show", () => _ctx.Store.Select(config.Serial));
+            var button = PageKit.Secondary(isCurrent ? Loc.T("btn.showing") : Loc.T("btn.show"), () => _ctx.Store.Select(config.Serial));
             button.IsEnabled = !isCurrent;
             Grid.SetColumn(button, 2);
             row.Children.Add(button);
@@ -229,11 +255,11 @@ public sealed class SettingsPage
         nameBox.TextChanged += (_, _) => { _nameDraft = nameBox.Text; _nameEdited = true; };
         nameBox.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) CommitName(); };
         nameBox.LostFocus += (_, _) => CommitName();
-        content.Children.Add(Row("Name", nameBox));
+        content.Children.Add(Row(Loc.T("row.name"), nameBox));
 
-        content.Children.Add(Row("Model", Secondary("Bambu Lab " + config.ModelName)));
-        content.Children.Add(Row("Serial number", Secondary(config.Serial)));
-        content.Children.Add(Row("Status", StatusDot(session)));
+        content.Children.Add(Row(Loc.T("row.model"), Secondary("Bambu Lab " + config.ModelName)));
+        content.Children.Add(Row(Loc.T("row.serial"), Secondary(config.Serial)));
+        content.Children.Add(Row(Loc.T("row.status"), StatusDot(session)));
 
         if (_editingConnection)
         {
@@ -249,7 +275,7 @@ public sealed class SettingsPage
                 HorizontalAlignment = HorizontalAlignment.Left,
             };
             hostBox.TextChanged += (_, _) => _hostDraft = hostBox.Text;
-            content.Children.Add(Row("IP address", hostBox));
+            content.Children.Add(Row(Loc.T("setup.ip"), hostBox));
 
             var codeBox = new PasswordBox
             {
@@ -260,7 +286,7 @@ public sealed class SettingsPage
                 HorizontalAlignment = HorizontalAlignment.Left,
             };
             codeBox.PasswordChanged += (_, _) => _codeDraft = codeBox.Password;
-            content.Children.Add(Row("Access code", codeBox));
+            content.Children.Add(Row(Loc.T("row.access_code"), codeBox));
 
             var buttons = new StackPanel
             {
@@ -268,9 +294,9 @@ public sealed class SettingsPage
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Margin = new Thickness(0, 8, 0, 0),
             };
-            buttons.Children.Add(PageKit.Secondary("Cancel", () => { _editingConnection = false; _hostDraft = ""; _codeDraft = ""; Rebuild(); }));
+            buttons.Children.Add(PageKit.Secondary(Loc.T("btn.cancel"), () => { _editingConnection = false; _hostDraft = ""; _codeDraft = ""; Rebuild(); }));
             bool canConnect = _hostDraft.Trim().Length > 0 && _codeDraft.Trim().Length >= 4;
-            var reconnect = PageKit.Primary("Reconnect", () => ApplyConnection(config), width: 130);
+            var reconnect = PageKit.Primary(Loc.T("btn.reconnect"), () => ApplyConnection(config), width: 130);
             reconnect.IsEnabled = canConnect;
             buttons.Children.Add(reconnect);
             content.Children.Add(buttons);
@@ -286,7 +312,7 @@ public sealed class SettingsPage
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 10, 0),
             };
-            var change = PageKit.Secondary("Change…", () =>
+            var change = PageKit.Secondary(Loc.T("btn.change"), () =>
             {
                 _hostDraft = config.Host;
                 _codeDraft = "";
@@ -295,7 +321,7 @@ public sealed class SettingsPage
             });
             ipRow.Children.Add(ipText);
             ipRow.Children.Add(change);
-            content.Children.Add(Row("IP address", ipRow));
+            content.Children.Add(Row(Loc.T("setup.ip"), ipRow));
         }
 
         var footer = new Grid { Margin = new Thickness(0, 8, 0, 0) };
@@ -303,16 +329,16 @@ public sealed class SettingsPage
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var note = new TextBlock
         {
-            Text = "Bambu Bar follows the printer if its IP address changes.",
+            Text = Loc.T("set.ip_follow"),
             FontSize = 11.5,
             Foreground = Ui.Brush(Palette.Idle),
             TextWrapping = TextWrapping.Wrap,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var forget = PageKit.Danger("Forget Printer…", () =>
+        var forget = PageKit.Danger(Loc.T("btn.forget"), () =>
         {
             if (!PageKit.Confirm(
-                    $"Forget {config.Name}?\n\nBambu Bar disconnects and removes the access code from the Windows Credential Manager. Print history stays."))
+                    Loc.Tf("set.forget_confirm", config.Name)))
                 return;
             store.Forget(config.Serial);
             settings.Save();
@@ -336,7 +362,7 @@ public sealed class SettingsPage
         if (sessions.Count > 1)
         {
             var combo = new ComboBox { Width = 220, FontSize = 12.5, HorizontalAlignment = HorizontalAlignment.Left };
-            combo.Items.Add(new TrayChoice("Automatic", null));
+            combo.Items.Add(new TrayChoice(Loc.T("tray.auto"), null));
             foreach (var session in sessions)
                 if (session.Config is { } config)
                     combo.Items.Add(new TrayChoice(config.Name, config.Serial));
@@ -355,20 +381,20 @@ public sealed class SettingsPage
                     settings.Save();
                 }
             };
-            content.Children.Add(Row("Printer in the tray", combo));
+            content.Children.Add(Row(Loc.T("tray.printer"), combo));
             if (settings.MenuBarSerial is null)
                 content.Children.Add(Ui.Body(
-                    "Automatic shows whichever printer is busy (paused first, then printing), otherwise the one you last looked at.",
+                    Loc.T("tray.auto_desc"),
                     11.5));
         }
 
         var style = new ComboBox { Width = 220, FontSize = 12.5, HorizontalAlignment = HorizontalAlignment.Left };
         string Title(SettingsStore.MenuBarStyle s) => s switch
         {
-            SettingsStore.MenuBarStyle.Icon => "Icon only",
-            SettingsStore.MenuBarStyle.Percent => "Progress",
-            SettingsStore.MenuBarStyle.Remaining => "Time left",
-            _ => "Progress and time left",
+            SettingsStore.MenuBarStyle.Icon => Loc.T("tray.icon"),
+            SettingsStore.MenuBarStyle.Percent => Loc.T("tray.percent"),
+            SettingsStore.MenuBarStyle.Remaining => Loc.T("tray.remaining"),
+            _ => Loc.T("tray.both"),
         };
         foreach (var s in new[] { SettingsStore.MenuBarStyle.Icon, SettingsStore.MenuBarStyle.Percent, SettingsStore.MenuBarStyle.Remaining, SettingsStore.MenuBarStyle.Both })
             style.Items.Add(new StyleChoice(Title(s), s));
@@ -382,11 +408,11 @@ public sealed class SettingsPage
                 settings.Save();
             }
         };
-        content.Children.Add(Row("While printing, show", style));
+        content.Children.Add(Row(Loc.T("tray.show"), style));
 
         var login = new CheckBox
         {
-            Content = "Open at login",
+            Content = Loc.T("tray.open_at_login"),
             IsChecked = AutoStart.IsEnabled,
             FontSize = 12.5,
         };
@@ -395,7 +421,7 @@ public sealed class SettingsPage
         content.Children.Add(Row("", login));
 
         content.Children.Add(Ui.Body(
-            "At login Bambu Bar starts in the tray only, without a window. Open it from the tray to see this window.",
+            Loc.T("tray.login_desc"),
             11.5));
         return content;
     }
@@ -437,12 +463,12 @@ public sealed class SettingsPage
     {
         switch (session.CurrentPhase)
         {
-            case PrinterSession.Phase.Online: return "Connected";
-            case PrinterSession.Phase.Connecting: return "Connecting…";
-            case PrinterSession.Phase.Offline: return session.PhaseReason ?? "Offline";
-            case PrinterSession.Phase.Unauthorized: return "Access code rejected";
-            case PrinterSession.Phase.Certificate: return "Can't verify the printer";
-            default: return session.PhaseReason ?? "Not connected";
+            case PrinterSession.Phase.Online: return Loc.T("link.connected");
+            case PrinterSession.Phase.Connecting: return Loc.T("link.connecting");
+            case PrinterSession.Phase.Offline: return session.PhaseReason ?? Loc.T("link.offline");
+            case PrinterSession.Phase.Unauthorized: return Loc.T("link.unauthorized_short");
+            case PrinterSession.Phase.Certificate: return Loc.T("link.cert");
+            default: return session.PhaseReason ?? Loc.T("link.not_connected");
         }
     }
 
@@ -520,6 +546,11 @@ public sealed class SettingsPage
     }
 
     private sealed record ThemeChoice(string Label, SettingsStore.ThemeMode Value)
+    {
+        public override string ToString() => Label;
+    }
+
+    private sealed record LangChoice(string Label, string? Code)
     {
         public override string ToString() => Label;
     }

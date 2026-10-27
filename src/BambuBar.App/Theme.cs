@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using Color = System.Windows.Media.Color;
 using Brush = System.Windows.Media.Brush;
@@ -74,11 +75,11 @@ public static class Format
     /// <summary>"2h 05m", "45m", "&lt;1m".</summary>
     public static string Duration(int minutes)
     {
-        if (minutes <= 0) return "<1m";
+        if (minutes <= 0) return Loc.T("dur.lt1m");
         int h = minutes / 60, m = minutes % 60;
-        if (h == 0) return $"{m}m";
-        if (h >= 24) return $"{h / 24}d {h % 24}h";
-        return $"{h}h {m:00}m";
+        if (h == 0) return Loc.Tf("dur.m", m);
+        if (h >= 24) return Loc.Tf("dur.dh", h / 24, h % 24);
+        return Loc.Tf("dur.hm", h, $"{m:00}");
     }
 
     public static string Duration(TimeSpan ts) => Duration((int)Math.Round(ts.TotalMinutes));
@@ -87,23 +88,25 @@ public static class Format
     public static string Finish(DateTime date, DateTime? now = null)
     {
         now ??= DateTime.Now;
+        var ui = CultureInfo.CurrentUICulture;
         string time = date.ToString("HH:mm", CultureInfo.InvariantCulture);
         if (date.Date == now.Value.Date) return time;
-        if (date.Date == now.Value.Date.AddDays(1)) return $"tomorrow {time}";
-        return date.ToString("ddd HH:mm", CultureInfo.InvariantCulture);
+        if (date.Date == now.Value.Date.AddDays(1)) return Loc.Tf("finish.tomorrow", time);
+        return date.ToString("ddd HH:mm", ui);
     }
 
     /// <summary>"3s ago", "2m ago", "1h 05m ago", "yesterday 14:32".</summary>
     public static string RelativeTime(DateTime date, DateTime? now = null)
     {
         now ??= DateTime.Now;
+        var ui = CultureInfo.CurrentUICulture;
         var delta = now.Value - date;
-        if (delta.TotalSeconds < 5) return "just now";
-        if (delta.TotalMinutes < 1) return $"{(int)delta.TotalSeconds}s ago";
-        if (delta.TotalMinutes < 60) return $"{(int)delta.TotalMinutes}m ago";
-        if (delta.TotalHours < 24) return $"{(int)delta.TotalHours}h {(int)delta.TotalMinutes % 60:00}m ago";
-        if (date.Date == now.Value.Date.AddDays(-1)) return "yesterday " + date.ToString("HH:mm", CultureInfo.InvariantCulture);
-        return date.ToString("ddd HH:mm", CultureInfo.InvariantCulture);
+        if (delta.TotalSeconds < 5) return Loc.T("rel.justnow");
+        if (delta.TotalMinutes < 1) return Loc.Tf("rel.s", (int)delta.TotalSeconds);
+        if (delta.TotalMinutes < 60) return Loc.Tf("rel.m", (int)delta.TotalMinutes);
+        if (delta.TotalHours < 24) return Loc.Tf("rel.hm", (int)delta.TotalHours, $"{(int)delta.TotalMinutes % 60:00}");
+        if (date.Date == now.Value.Date.AddDays(-1)) return Loc.Tf("rel.yesterday", date.ToString("HH:mm", CultureInfo.InvariantCulture));
+        return date.ToString("ddd HH:mm", ui);
     }
 
     public static string Temperature(double value) => $"{(int)Math.Round(value)}°";
@@ -111,9 +114,9 @@ public static class Format
     /// <summary>The macOS "WiFi.describe": "Good"/"Fair"/"Weak" by dBm.</summary>
     public static string Wifi(int dbm) => dbm switch
     {
-        >= -55 => "Good",
-        >= -70 => "Fair",
-        _ => "Weak",
+        >= -55 => Loc.T("wifi.good"),
+        >= -70 => Loc.T("wifi.fair"),
+        _ => Loc.T("wifi.weak"),
     };
 
     /// <summary>"HS01" → "Hardened steel", "HH01" → "Hardened steel, high flow"…</summary>
@@ -121,20 +124,20 @@ public static class Format
     {
         string upper = code.ToUpperInvariant();
         if (upper.Length < 4)
-            return upper.Contains("HARDENED") ? "Hardened steel"
-                 : upper.Contains("STAINLESS") ? "Stainless steel"
+            return upper.Contains("HARDENED") ? Loc.T("nozzle.hardened")
+                 : upper.Contains("STAINLESS") ? Loc.T("nozzle.stainless")
                  : code;
         string material = upper[2..4] switch
         {
-            "00" => "Stainless steel",
-            "01" => "Hardened steel",
-            "05" => "Tungsten carbide",
+            "00" => Loc.T("nozzle.stainless"),
+            "01" => Loc.T("nozzle.hardened"),
+            "05" => Loc.T("nozzle.tungsten"),
             _ => code,
         };
         return upper[1] switch
         {
-            'U' => material + ", TPU high flow",
-            'H' or 'E' => material + ", high flow",
+            'U' => Loc.Tf("nozzle.flow_tpu", material),
+            'H' or 'E' => Loc.Tf("nozzle.flow", material),
             _ => material,
         };
     }

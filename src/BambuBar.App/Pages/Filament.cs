@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using BambuBar.Core.App;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Sessions;
 using Palette = BambuBar.App.Palette;
@@ -31,15 +32,15 @@ public sealed class FilamentPage
             MaxWidth = 860,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        root.Children.Add(PageKit.Header("Filament", Subtitle(online ? status : null)));
+        root.Children.Add(PageKit.Header(Loc.T("filament.title"), Subtitle(online ? status : null)));
 
         if (online && status is not null)
         {
             bool anySpool = status.Ams.Count > 0 || status.ExternalSpool is { IsLoaded: true };
             if (!anySpool)
             {
-                root.Children.Add(Empty("No AMS connected",
-                    "Spools loaded in an AMS or on the external holder appear here."));
+                root.Children.Add(Empty(Loc.T("fil.no_ams"),
+                    Loc.T("fil.no_ams_desc")));
             }
 
             var active = status.ActiveSpool;
@@ -77,7 +78,7 @@ public sealed class FilamentPage
             if (status.ExternalSpool is { IsLoaded: true } ext)
             {
                 var block = new StackPanel { Margin = new Thickness(0, 14, 0, 0) };
-                block.Children.Add(new TextBlock { Text = "External spool", FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
+                block.Children.Add(new TextBlock { Text = Loc.T("fil.external"), FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = ThemeEngine.Current.PrimaryBrush });
                 var grid = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
                 grid.Children.Add(SpoolCard(ext, active is { Id: int id } && id == ext.Id && status.State.IsActive()));
                 block.Children.Add(grid);
@@ -87,10 +88,10 @@ public sealed class FilamentPage
         else
         {
             root.Children.Add(Empty(
-                store.Sessions.Count > 0 ? "Printer offline" : "No printer set up",
+                store.Sessions.Count > 0 ? Loc.T("fil.offline") : Loc.T("panel.no_printer"),
                 store.Sessions.Count > 0
-                    ? "Filament appears once Bambu Bar is connected."
-                    : "Set up your printer on the Printer page."));
+                    ? Loc.T("fil.offline_desc")
+                    : Loc.T("fil.setup_hint")));
         }
 
         return root;
@@ -98,11 +99,11 @@ public sealed class FilamentPage
 
     private static string Subtitle(PrinterStatus? status)
     {
-        if (status is null) return "Spools in your AMS and on the external holder";
+        if (status is null) return Loc.T("fil.subtitle_empty");
         int loaded = status.AllSpools.Count(s => s.IsLoaded);
         if (status.ActiveSpool is { } active && status.State.IsActive())
-            return $"{loaded} loaded · printing with {active.Label} {active.DisplayName}";
-        return $"{loaded} spool{(loaded == 1 ? "" : "s")} loaded";
+            return Loc.Tf("fil.printing_with", loaded, active.Label, active.DisplayName);
+        return loaded == 1 ? Loc.Tf("fil.loaded_one", loaded) : Loc.Tf("fil.loaded_many", loaded);
     }
 
     /// <summary>Drying, humidity and temperature of an AMS unit, the way the macOS page shows them.</summary>
@@ -137,11 +138,11 @@ public sealed class FilamentPage
         }
 
         if (unit.DryingMinutesLeft > 0)
-            Add($"Drying · {Format.Duration(unit.DryingMinutesLeft)} left", Palette.Bed);
+            Add(Loc.Tf("fil.drying", Format.Duration(unit.DryingMinutesLeft)), Palette.Bed);
         if (unit.Humidity is { } h)
-            Add($"{h}% humidity", h > 40 ? Palette.Paused : (Color?)null);
+            Add(Loc.Tf("fil.humidity", h), h > 40 ? Palette.Paused : (Color?)null);
         else if (unit.HumidityLevel is { } level)
-            Add($"Humidity {level} of 5", level >= 4 ? Palette.Paused : (Color?)null);
+            Add(Loc.Tf("fil.humidity_level", level), level >= 4 ? Palette.Paused : (Color?)null);
         if (unit.Temperature is { } t)
             Add(Format.Temperature(t), null);
         return row;
@@ -171,7 +172,7 @@ public sealed class FilamentPage
         if (active)
             right.Children.Add(new TextBlock
             {
-                Text = "In use",
+                Text = Loc.T("spool.in_use"),
                 FontSize = 10.5,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Ui.Brush(Palette.AccentDeep),
@@ -184,7 +185,7 @@ public sealed class FilamentPage
 
         content.Children.Add(new TextBlock
         {
-            Text = spool.IsLoaded ? spool.DisplayName : "Empty slot",
+            Text = spool.IsLoaded ? spool.DisplayName : Loc.T("spool.empty_slot"),
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
             Foreground = spool.IsLoaded ? ThemeEngine.Current.PrimaryBrush : Ui.Brush(Palette.Idle),
@@ -192,7 +193,7 @@ public sealed class FilamentPage
         });
         content.Children.Add(new TextBlock
         {
-            Text = spool.IsLoaded ? Detail(spool) : "Load a spool to see it here",
+            Text = spool.IsLoaded ? Detail(spool) : Loc.T("spool.load_hint"),
             FontSize = 11.5,
             Foreground = Ui.Brush(Palette.Idle),
             Margin = new Thickness(0, 2, 0, 0),
@@ -206,10 +207,10 @@ public sealed class FilamentPage
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var pct = spool.Remain;
-            var label = new TextBlock { Text = "Remaining", FontSize = 10.5, Foreground = Ui.Brush(Palette.Idle) };
+            var label = new TextBlock { Text = Loc.T("spool.remaining"), FontSize = 10.5, Foreground = Ui.Brush(Palette.Idle) };
             var value = new TextBlock
             {
-                Text = pct is { } r ? $"{r}%" : "Unknown",
+                Text = pct is { } r ? $"{r}%" : Loc.T("spool.unknown"),
                 FontSize = 10.5,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = ThemeEngine.Current.PrimaryBrush,
@@ -247,7 +248,7 @@ public sealed class FilamentPage
         if (spool.Material.Length > 0) parts.Add(spool.Material);
         var clean = new string(spool.Color.Where(char.IsLetterOrDigit).ToArray()).Take(6).ToArray();
         if (clean.Length == 6) parts.Add("#" + string.Join("", clean));
-        parts.Add(spool.IsBambu ? "Bambu RFID" : "Third-party");
+        parts.Add(spool.IsBambu ? Loc.T("spool.rfid") : Loc.T("spool.third_party"));
         return string.Join(" · ", parts);
     }
 

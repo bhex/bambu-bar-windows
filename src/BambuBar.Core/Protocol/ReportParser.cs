@@ -46,18 +46,17 @@ public static class ReportParser
             s.Bed = new Temperature(JsonTools.GetDouble(JsonTools.Get(p, "bed_temper")) ?? 0, JsonTools.GetDouble(JsonTools.Get(p, "bed_target_temper")) ?? 0);
         }
 
+        // Only machines with a real chamber temperature controller (the `device.ctc` block, X1
+        // series) report a chamber temperature. P1S/P1P/P2S have no chamber sensor, but the
+        // legacy `info.temp`/`chamber_temper` fields still carry a small number (~5 °C) — that is
+        // sensor noise, not a chamber reading (Bambu Studio doesn't show one either), so we
+        // ignore those fields and let the UI render the tile as "–" when the sensor is absent.
         var ctcPacked = JsonTools.GetInt(JsonTools.GetDictionary(JsonTools.GetDictionary(JsonTools.Get(device, "ctc"))?["info"])?["temp"]);
         if (ctcPacked is { } cp)
         {
             s.Chamber = Unpack(cp).Current;
+            if (s.Chamber is { } c && (c <= 0 || c > 120)) s.Chamber = null;
         }
-        else
-        {
-            var chamberTemp = JsonTools.GetDouble(JsonTools.GetDictionary(JsonTools.Get(p, "info"))?["temp"]) ?? JsonTools.GetDouble(JsonTools.Get(p, "chamber_temper"));
-            if (chamberTemp is { } ct) s.Chamber = ct;
-        }
-
-        if (s.Chamber is { } c && (c <= 0 || c > 120)) s.Chamber = null;
 
         // Fans: the `airduct` parts already report percent; the legacy fields are 0-15.
         var airductParts = JsonTools.GetList(JsonTools.GetDictionary(JsonTools.Get(device, "airduct"))?["parts"]);

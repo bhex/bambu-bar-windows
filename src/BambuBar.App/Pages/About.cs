@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using BambuBar.Core.I18n;
 using Palette = BambuBar.App.Palette;
 
 namespace BambuBar.App;
@@ -16,7 +17,7 @@ public sealed class AboutPage
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         string ver = version is null ? "dev" : version.ToString(3);
         string build = version is null ? "dev" : version.Revision.ToString();
-        string system = $"{Environment.OSVersion.VersionString} · {(Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit")}";
+        string system = $"{Environment.OSVersion.VersionString} · {Loc.Tf("about.bits", Environment.Is64BitOperatingSystem ? 64 : 32)}";
         string summary = $"Bambu Bar {ver} (build {build}) · {system} · .NET 8";
 
         var root = new StackPanel
@@ -69,14 +70,14 @@ public sealed class AboutPage
         text.Children.Add(new TextBlock { Text = "Bambu Bar", FontSize = 30, FontWeight = FontWeights.Bold, Foreground = ThemeEngine.Current.PrimaryBrush });
         text.Children.Add(new TextBlock
         {
-            Text = $"Version {ver} (build {build})",
+            Text = Loc.Tf("about.version", ver, build),
             FontSize = 13,
             Foreground = Ui.Brush(Palette.Idle),
             Margin = new Thickness(0, 3, 0, 0),
         });
         text.Children.Add(new TextBlock
         {
-            Text = "Your Bambu Lab printer, one click away in the system tray.",
+            Text = Loc.T("about.tagline"),
             FontSize = 13,
             Foreground = new SolidColorBrush(ThemeEngine.Current.Neutral(0x66)),
             Margin = new Thickness(0, 1, 0, 0),
@@ -87,27 +88,28 @@ public sealed class AboutPage
 
         // MARK: this copy
         var copy = new StackPanel();
-        copy.Children.Add(Ui.DetailRow("Version", $"{ver} (build {build})"));
-        copy.Children.Add(Ui.DetailRow("System", system));
-        copy.Children.Add(Ui.DetailRow("License", "MIT, free and open source"));
+        copy.Children.Add(Ui.DetailRow(Loc.T("about.row_version"), $"{ver} (build {build})"));
+        copy.Children.Add(Ui.DetailRow(Loc.T("about.row_system"), system));
+        copy.Children.Add(Ui.DetailRow(Loc.T("about.row_license"), Loc.T("about.license_mit")));
         var reportRow = new Grid { Margin = new Thickness(0, 4, 0, 0) };
         reportRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         reportRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var note = new TextBlock { Text = "For bug reports", FontSize = 12, Foreground = Ui.Brush(Palette.Idle) };
+        string copyLabel = Loc.T("about.copy_info"), copiedLabel = Loc.T("about.copied");
+        var note = new TextBlock { Text = Loc.T("about.bug_reports"), FontSize = 12, Foreground = Ui.Brush(Palette.Idle) };
         Button copyButton = null!;
-        copyButton = PageKit.Secondary("Copy Version Info", () =>
+        copyButton = PageKit.Secondary(copyLabel, () =>
         {
             try
             {
                 Clipboard.SetText(summary);
-                copyButton.Content = "Copied ✓";
+                copyButton.Content = copiedLabel;
                 var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-                timer.Tick += (_, _) => { copyButton.Content = "Copy Version Info"; timer.Stop(); };
+                timer.Tick += (_, _) => { copyButton.Content = copyLabel; timer.Stop(); };
                 timer.Start();
             }
             catch
             {
-                copyButton.Content = "Clipboard unavailable";
+                copyButton.Content = Loc.T("about.clipboard_unavailable");
             }
         });
         Grid.SetColumn(note, 0);
@@ -115,29 +117,24 @@ public sealed class AboutPage
         reportRow.Children.Add(note);
         reportRow.Children.Add(copyButton);
         copy.Children.Add(reportRow);
-        root.Children.Add(Section("This copy", copy));
+        root.Children.Add(Section(Loc.T("about.section_copy"), copy));
 
         // MARK: how it works
         var how = new StackPanel();
-        how.Children.Add(Paragraph(
-            "Bambu Bar connects straight to your printer on the local network, the same way Bambu Studio does in LAN mode: an encrypted MQTT connection on port 8883, signed in with the printer's access code. The printer's certificate is checked against the Bambu Lab certificate authorities bundled with the app — a connection from anything else is refused."));
-        how.Children.Add(Paragraph(
-            "The printer streams its status about once a second. Bambu Bar shows it in the system tray, watches the job it starts, and keeps a short history of your prints."));
-        root.Children.Add(Section("How it works", how));
+        how.Children.Add(Paragraph(Loc.T("about.how1")));
+        how.Children.Add(Paragraph(Loc.T("about.how2")));
+        root.Children.Add(Section(Loc.T("about.section_how"), how));
 
         // MARK: privacy
         var privacy = new StackPanel();
-        privacy.Children.Add(Paragraph(
-            "No account, no cloud, no analytics. Nothing leaves your network: Bambu Bar talks only to your printer. The access code is stored in the Windows Credential Manager — never in plain text — and only ever sent to the printer."));
-        root.Children.Add(Section("Privacy", privacy));
+        privacy.Children.Add(Paragraph(Loc.T("about.privacy")));
+        root.Children.Add(Section(Loc.T("about.section_privacy"), privacy));
 
         // MARK: credits
         var credits = new StackPanel();
-        credits.Children.Add(Paragraph(
-            "A Windows port of the independent macOS app Bambu Bar by rolottr (MIT). Protocol details and the English HMS error texts come from the open-source ha-bambulab project (MIT), with thanks to Bambuddy and bambu-cli for documenting the newer printers."));
-        credits.Children.Add(Paragraph(
-            "Bambu Lab, Bambu Studio and P2S are trademarks of Bambu Lab. Bambu Bar is an independent project, not affiliated with or endorsed by Bambu Lab."));
-        root.Children.Add(Section("Credits", credits));
+        credits.Children.Add(Paragraph(Loc.T("about.credits1")));
+        credits.Children.Add(Paragraph(Loc.T("about.credits2")));
+        root.Children.Add(Section(Loc.T("about.section_credits"), credits));
 
         return root;
     }

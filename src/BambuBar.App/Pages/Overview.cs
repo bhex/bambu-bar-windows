@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using BambuBar.Core.App;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Sessions;
 using Palette = BambuBar.App.Palette;
@@ -27,10 +28,10 @@ public sealed class OverviewPage
         if (session?.Config is { } config)
         {
             var parts = new List<string> { "Bambu Lab " + config.ModelName, config.Host };
-            if (status?.Firmware is { Length: > 0 } fw) parts.Add("Firmware " + fw);
+            if (status?.Firmware is { Length: > 0 } fw) parts.Add(Loc.Tf("ov.firmware", fw));
             subtitle = string.Join(" · ", parts);
         }
-        root.Children.Add(PageKit.Header(session?.Config.Name ?? "Bambu Bar", subtitle, PageKit.Icon("⟳", "Refresh", () => store.Refresh())));
+        root.Children.Add(PageKit.Header(session?.Config.Name ?? "Bambu Bar", subtitle, PageKit.Icon("⟳", Loc.T("btn.refresh"), () => store.Refresh())));
 
         if (online && status is not null)
         {
@@ -42,7 +43,7 @@ public sealed class OverviewPage
                 {
                     root.Children.Add(Ui.Panel(new TextBlock
                     {
-                        Text = "The printer only accepts pause, stop and speed changes in LAN Only mode with Developer Mode on (printer screen → Settings → Network). Status and the chamber light work either way.",
+                        Text = Loc.T("ov.controls_locked"),
                         FontSize = 11.5,
                         Foreground = Ui.Brush(Palette.Idle),
                         TextWrapping = TextWrapping.Wrap,
@@ -55,7 +56,7 @@ public sealed class OverviewPage
             if (status.Ams.Count > 0 || status.ExternalSpool is { IsLoaded: true })
             {
                 var block = new StackPanel { Margin = new Thickness(0, 16, 0, 0) };
-                block.Children.Add(Ui.SectionLabel("Filament"));
+                block.Children.Add(Ui.SectionLabel(Loc.T("filament.title")));
                 block.Children.Add(FilamentStrip(status));
                 root.Children.Add(block);
             }
@@ -81,7 +82,7 @@ public sealed class OverviewPage
         var pill = new TextBlock
         {
             Text = status.StateTitle + (status.State == JobState.Printing && status.Speed != SpeedLevel.Standard ? $" · {status.Speed.Title()}" : "")
-                 + (status.State == JobState.Idle && status.DoorOpen is true ? " · Door open" : ""),
+                 + (status.State == JobState.Idle && status.DoorOpen is true ? " · " + Loc.T("ov.door_open") : ""),
             FontSize = 12,
             FontWeight = FontWeights.SemiBold,
             Foreground = Ui.Brush(color),
@@ -90,7 +91,7 @@ public sealed class OverviewPage
 
         panel.Children.Add(new TextBlock
         {
-            Text = status.JobName.Length > 0 ? status.JobName : "Print",
+            Text = status.JobName.Length > 0 ? status.JobName : Loc.T("job.default_name"),
             FontSize = 24,
             FontWeight = FontWeights.SemiBold,
             Foreground = ThemeEngine.Current.PrimaryBrush,
@@ -116,8 +117,8 @@ public sealed class OverviewPage
         var timing = new TextBlock
         {
             Text = status.RemainingMinutes > 0
-                ? $"~{Format.Duration(status.RemainingMinutes)} left"
-                : status.EstimatedEnd is { } end ? $"ends {Format.Finish(end)}" : "",
+                ? Loc.Tf("panel.left", Format.Duration(status.RemainingMinutes))
+                : status.EstimatedEnd is { } end ? Loc.Tf("panel.ends", Format.Finish(end)) : "",
             FontSize = 12.5,
             Foreground = Ui.Brush(Palette.Idle),
             VerticalAlignment = VerticalAlignment.Center,
@@ -134,7 +135,7 @@ public sealed class OverviewPage
         // Layer + filament in use.
         var meta = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
         if (status.TotalLayers > 0)
-            meta.Children.Add(MetaChip($"Layer {status.Layer} of {status.TotalLayers}"));
+            meta.Children.Add(MetaChip(Loc.Tf("detail.layer_of", status.Layer, status.TotalLayers)));
         if (status.ActiveSpool is { IsLoaded: true } spool)
             meta.Children.Add(MetaChip($"{spool.DisplayName} · {spool.Label}"));
         if (meta.Children.Count > 0)
@@ -162,22 +163,22 @@ public sealed class OverviewPage
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
         if (status.State == JobState.Paused)
         {
-            row.Children.Add(PageKit.Primary("Resume", () => _ctx.Store.Resume(), width: 130));
+            row.Children.Add(PageKit.Primary(Loc.T("btn.resume"), () => _ctx.Store.Resume(), width: 130));
         }
         else if (status.State.IsActive())
         {
-            row.Children.Add(PageKit.Primary(status.ControlsLocked ? "Pause (locked)" : "Pause", () => _ctx.Store.Pause(), width: 130));
+            row.Children.Add(PageKit.Primary(status.ControlsLocked ? Loc.T("btn.pause_locked") : Loc.T("btn.pause"), () => _ctx.Store.Pause(), width: 130));
         }
         if (status.State.IsActive())
         {
-            row.Children.Add(PageKit.Danger(status.ControlsLocked ? "Stop (locked)" : "Stop", () =>
+            row.Children.Add(PageKit.Danger(status.ControlsLocked ? Loc.T("btn.stop_locked") : Loc.T("btn.stop"), () =>
             {
-                if (_ctx.Store.Settings.ConfirmStop && !PageKit.Confirm("Stop the print? The printer will be told to stop the current job."))
+                if (_ctx.Store.Settings.ConfirmStop && !PageKit.Confirm(Loc.T("confirm.stop")))
                     return;
                 _ctx.Store.StopPrint();
             }));
         }
-        row.Children.Add(PageKit.Secondary(status.ChamberLightOn is true ? "Chamber light off" : "Chamber light on", () => _ctx.Store.ToggleLight()));
+        row.Children.Add(PageKit.Secondary(status.ChamberLightOn is true ? Loc.T("btn.light_chamber_off") : Loc.T("btn.light_chamber_on"), () => _ctx.Store.ToggleLight()));
         panel.Children.Add(row);
 
         var speedRow = new StackPanel { Orientation = Orientation.Horizontal };
@@ -226,21 +227,21 @@ public sealed class OverviewPage
     private UIElement Metrics(PrinterStatus status)
     {
         var block = new StackPanel { Margin = new Thickness(0, 16, 0, 0) };
-        block.Children.Add(Ui.SectionLabel("Temperatures & airflow"));
+        block.Children.Add(Ui.SectionLabel(Loc.T("section.temps")));
         var grid = new Grid();
         for (int i = 0; i < 4; i++)
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var nozzle = TempTile("Nozzle", status.Nozzle.Current, status.Nozzle.Target, Palette.Nozzle, 300);
+        var nozzle = TempTile(Loc.T("tile.nozzle"), status.Nozzle.Current, status.Nozzle.Target, Palette.Nozzle, 300);
         Grid.SetColumn(nozzle, 0);
         grid.Children.Add(nozzle);
 
-        var bedTile = TempTile("Bed", status.Bed.Current, status.Bed.Target, Palette.Bed, 110);
+        var bedTile = TempTile(Loc.T("tile.bed"), status.Bed.Current, status.Bed.Target, Palette.Bed, 110);
         if (bedTile is FrameworkElement be) be.Margin = new Thickness(5, 0, 5, 0);
         Grid.SetColumn(bedTile, 1);
         grid.Children.Add(bedTile);
 
-        var chamber = TempTile("Chamber", status.Chamber, null, Palette.Chamber, 65, readOnly: true);
+        var chamber = TempTile(Loc.T("tile.chamber"), status.Chamber, null, Palette.Chamber, 65, readOnly: true);
         Grid.SetColumn(chamber, 2);
         grid.Children.Add(chamber);
 
@@ -264,10 +265,11 @@ public sealed class OverviewPage
             Foreground = ThemeEngine.Current.PrimaryBrush,
             Margin = new Thickness(0, 3, 0, 0),
         });
-        string sub = readOnly ? "Read only"
+        string sub = readOnly
+            ? (current is null ? Loc.T("tile.unavailable") : Loc.T("tile.readonly"))
             : target is { } t && t > 0
-                ? (Math.Abs((current ?? 0) - t) <= 2 ? $"At {t:0}°" : (current ?? 0) < t ? $"Heating to {t:0}°" : $"Cooling to {t:0}°")
-                : "Off";
+                ? (Math.Abs((current ?? 0) - t) <= 2 ? Loc.Tf("tile.at", (int)Math.Round(t)) : (current ?? 0) < t ? Loc.Tf("tile.heating", (int)Math.Round(t)) : Loc.Tf("tile.cooling", (int)Math.Round(t)))
+                : Loc.T("tile.off");
         content.Children.Add(new TextBlock { Text = sub, FontSize = 10.5, Foreground = Ui.Brush(Palette.Idle), Margin = new Thickness(0, 1, 0, 6) });
         content.Children.Add(Ui.Gauge(
             (current ?? 0) / max,
@@ -279,11 +281,11 @@ public sealed class OverviewPage
     private static UIElement FanTile(PrinterStatus status)
     {
         var content = new StackPanel();
-        content.Children.Add(new TextBlock { Text = "Fans", FontSize = 11, Foreground = Ui.Brush(Palette.Idle) });
-        content.Children.Add(FanRow("Part", status.PartFan));
-        content.Children.Add(FanRow("Aux", status.AuxFan));
-        if (status.ExhaustFan is { } exhaust) content.Children.Add(FanRow("Exhaust", exhaust));
-        else if (status.HeatbreakFan is { } hotend) content.Children.Add(FanRow("Hotend", hotend));
+        content.Children.Add(new TextBlock { Text = Loc.T("tile.fans"), FontSize = 11, Foreground = Ui.Brush(Palette.Idle) });
+        content.Children.Add(FanRow(Loc.T("fan.part"), status.PartFan));
+        content.Children.Add(FanRow(Loc.T("fan.aux"), status.AuxFan));
+        if (status.ExhaustFan is { } exhaust) content.Children.Add(FanRow(Loc.T("fan.exhaust"), exhaust));
+        else if (status.HeatbreakFan is { } hotend) content.Children.Add(FanRow(Loc.T("fan.hotend"), hotend));
         return Ui.Panel(content, radius: 14, padding: 11);
     }
 
@@ -333,7 +335,7 @@ public sealed class OverviewPage
             });
             card.Children.Add(new TextBlock
             {
-                Text = spool.IsLoaded ? spool.DisplayName : "Empty",
+                Text = spool.IsLoaded ? spool.DisplayName : Loc.T("spool.empty"),
                 FontSize = 11.5,
                 FontWeight = FontWeights.Medium,
                 Foreground = ThemeEngine.Current.PrimaryBrush,
@@ -352,24 +354,24 @@ public sealed class OverviewPage
     private UIElement Machine(PrinterStatus status)
     {
         var block = new StackPanel { Margin = new Thickness(0, 16, 0, 0) };
-        block.Children.Add(Ui.SectionLabel("Printer"));
+        block.Children.Add(Ui.SectionLabel(Loc.T("section.printer")));
 
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         var left = new StackPanel();
-        left.Children.Add(Ui.DetailRow("Speed", $"{status.Speed.Title()} ({status.Speed.Percent()}%)"));
-        left.Children.Add(Ui.DetailRow("Nozzle", NozzleText(status)));
-        left.Children.Add(Ui.DetailRow("Door", status.DoorOpen is true ? "Open" : status.DoorOpen is false ? "Closed" : "—"));
-        left.Children.Add(Ui.DetailRow("Chamber light", status.ChamberLightOn is true ? "On" : status.ChamberLightOn is false ? "Off" : "—"));
+        left.Children.Add(Ui.DetailRow(Loc.T("row.speed"), $"{status.Speed.Title()} ({status.Speed.Percent()}%)"));
+        left.Children.Add(Ui.DetailRow(Loc.T("row.nozzle"), NozzleText(status)));
+        left.Children.Add(Ui.DetailRow(Loc.T("row.door"), status.DoorOpen is true ? Loc.T("door.open") : status.DoorOpen is false ? Loc.T("door.closed") : "—"));
+        left.Children.Add(Ui.DetailRow(Loc.T("row.light"), status.ChamberLightOn is true ? Loc.T("toggle.on") : status.ChamberLightOn is false ? Loc.T("toggle.off") : "—"));
         var leftPanel = Ui.Panel(left, radius: 16, padding: 13);
 
         var right = new StackPanel();
-        right.Children.Add(Ui.DetailRow("Network", status.WifiSignal is { } w ? $"{Format.Wifi(w)} ({w} dBm)" : "—"));
-        right.Children.Add(Ui.DetailRow("Storage", status.HasSDCard is true ? "SD card inserted" : status.HasSDCard is false ? "No SD card" : "—"));
-        right.Children.Add(Ui.DetailRow("Live View", status.LiveViewEnabled is true ? "On" : status.LiveViewEnabled is false ? "Off" : "—"));
-        right.Children.Add(Ui.DetailRow("Firmware", (status.Firmware ?? "—") + (status.UpdateAvailable ? " · Update available" : "")));
+        right.Children.Add(Ui.DetailRow(Loc.T("row.network"), status.WifiSignal is { } w ? $"{Format.Wifi(w)} ({w} dBm)" : "—"));
+        right.Children.Add(Ui.DetailRow(Loc.T("row.storage"), status.HasSDCard is true ? Loc.T("storage.sd") : status.HasSDCard is false ? Loc.T("storage.no_sd") : "—"));
+        right.Children.Add(Ui.DetailRow(Loc.T("row.liveview"), status.LiveViewEnabled is true ? Loc.T("toggle.on") : status.LiveViewEnabled is false ? Loc.T("toggle.off") : "—"));
+        right.Children.Add(Ui.DetailRow(Loc.T("row.firmware"), (status.Firmware ?? "—") + (status.UpdateAvailable ? " · " + Loc.T("ov.update_available") : "")));
         var rightPanel = Ui.Panel(right, radius: 16, padding: 13);
         rightPanel.Margin = new Thickness(10, 0, 0, 0);
 
@@ -394,7 +396,7 @@ public sealed class OverviewPage
         var content = new StackPanel { Margin = new Thickness(0, 30, 0, 30) };
         content.Children.Add(new TextBlock
         {
-            Text = session is null ? "No printer set up" : session.CurrentPhase.ToString(),
+            Text = session is null ? Loc.T("panel.no_printer") : PhaseTitle(session.CurrentPhase),
             FontSize = 16,
             FontWeight = FontWeights.SemiBold,
             Foreground = ThemeEngine.Current.PrimaryBrush,
@@ -403,8 +405,8 @@ public sealed class OverviewPage
         {
             Text = session?.PhaseReason
                 ?? (session is null
-                    ? "Add your printer to see its progress, temperatures and filament here."
-                    : "The printer isn't reachable on the network."),
+                    ? Loc.T("ov.add_printer")
+                    : Loc.T("panel.unreachable")),
             FontSize = 13,
             Foreground = Ui.Brush(Palette.Idle),
             TextWrapping = TextWrapping.Wrap,
@@ -412,10 +414,20 @@ public sealed class OverviewPage
         });
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         if (session is not null)
-            buttons.Children.Add(PageKit.Primary("Retry", () => _ctx.Store.Refresh(), width: 120));
+            buttons.Children.Add(PageKit.Primary(Loc.T("btn.retry"), () => _ctx.Store.Refresh(), width: 120));
         else
-            buttons.Children.Add(PageKit.Primary("Set Up…", () => _ctx.Window.BeginAddPrinter(), width: 140));
+            buttons.Children.Add(PageKit.Primary(Loc.T("btn.setup"), () => _ctx.Window.BeginAddPrinter(), width: 140));
         content.Children.Add(buttons);
         return Ui.Panel(content, radius: 20, padding: 18);
     }
+
+    private static string PhaseTitle(PrinterSession.Phase phase) => phase switch
+    {
+        PrinterSession.Phase.Online => Loc.T("link.connected"),
+        PrinterSession.Phase.Connecting => Loc.T("link.connecting"),
+        PrinterSession.Phase.Offline => Loc.T("link.offline"),
+        PrinterSession.Phase.Unauthorized => Loc.T("link.unauthorized"),
+        PrinterSession.Phase.Certificate => Loc.T("link.certificate_title"),
+        _ => phase.ToString(),
+    };
 }

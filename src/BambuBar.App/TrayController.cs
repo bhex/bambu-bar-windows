@@ -1,5 +1,6 @@
 using System.Windows.Forms;
 using BambuBar.Core.App;
+using BambuBar.Core.I18n;
 using BambuBar.Core.Models;
 using BambuBar.Core.Sessions;
 using BambuBar.Core.Store;
@@ -38,15 +39,15 @@ public sealed class TrayController : IDisposable
         };
 
         var menu = new ContextMenuStrip();
-        var open = new ToolStripMenuItem("Open Bambu Bar") { ShortcutKeys = Keys.Control | Keys.O };
+        var open = new ToolStripMenuItem(Loc.T("tray.open")) { ShortcutKeys = Keys.Control | Keys.O };
         open.Click += (_, _) => _openMainWindow();
-        var pause = new ToolStripMenuItem("Pause") { Visible = false };
+        var pause = new ToolStripMenuItem(Loc.T("tray.pause")) { Visible = false };
         pause.Click += (_, _) => OnUi(() => _store.Pause());
-        var resume = new ToolStripMenuItem("Resume") { Visible = false };
+        var resume = new ToolStripMenuItem(Loc.T("tray.resume")) { Visible = false };
         resume.Click += (_, _) => OnUi(() => _store.Resume());
-        var stop = new ToolStripMenuItem("Stop print") { Visible = false };
+        var stop = new ToolStripMenuItem(Loc.T("tray.stop")) { Visible = false };
         stop.Click += (_, _) => OnUi(() => _store.StopPrint());
-        var quitItem = new ToolStripMenuItem("Quit Bambu Bar");
+        var quitItem = new ToolStripMenuItem(Loc.T("tray.quit"));
         quitItem.Click += (_, _) => _quit();
         menu.Items.Add(open);
         menu.Items.Add(pause);
@@ -58,6 +59,8 @@ public sealed class TrayController : IDisposable
         _pauseItem = pause;
         _resumeItem = resume;
         _stopItem = stop;
+        _openItem = open;
+        _quitItem = quitItem;
 
         // Single click → panel; double click → main window. De-bounced with a short timer.
         _clickTimer = new System.Windows.Forms.Timer { Interval = 350 };
@@ -101,6 +104,7 @@ public sealed class TrayController : IDisposable
         };
 
         _store.Changed += () => OnUi(Refresh);
+        Loc.Changed += () => OnUi(Refresh);
         _store.Toasted += toast =>
         {
             // Command acknowledgements and store-level toasts become balloons so they reach the user
@@ -112,7 +116,7 @@ public sealed class TrayController : IDisposable
     }
 
     private bool _pendingDoubleClick;
-    private ToolStripMenuItem _pauseItem = null!, _resumeItem = null!, _stopItem = null!;
+    private ToolStripMenuItem _pauseItem = null!, _resumeItem = null!, _stopItem = null!, _openItem = null!, _quitItem = null!;
 
     /// <summary>Runs an action on the WPF dispatcher (the tray lives on that thread; store events don't).</summary>
     private static void OnUi(Action action)
@@ -168,6 +172,12 @@ public sealed class TrayController : IDisposable
         _pauseItem.Visible = active && !paused;
         _resumeItem.Visible = paused;
         _stopItem.Visible = active;
+        // Keep the menu wording in sync with the active language.
+        _openItem.Text = Loc.T("tray.open");
+        _pauseItem.Text = Loc.T("tray.pause");
+        _resumeItem.Text = Loc.T("tray.resume");
+        _stopItem.Text = Loc.T("tray.stop");
+        _quitItem.Text = Loc.T("tray.quit");
     }
 
     /// <summary>The tooltip, shaped by the "while printing, show" setting (the macOS menu bar text).</summary>
@@ -176,26 +186,39 @@ public sealed class TrayController : IDisposable
         if (session is null || !online)
         {
             var name = session?.Config.Name ?? "Bambu Bar";
-            return session is null ? "Bambu Bar — no printer set up" : $"{name} — {session.CurrentPhase}";
+            return session is null
+                ? Loc.T("tray.no_printer_tip")
+                : Loc.Tf("tray.tip_phase", name, PhaseName(session.CurrentPhase));
         }
 
-        if (s is null) return $"{session.Config.Name} — waiting for data";
+        if (s is null) return Loc.Tf("tray.waiting", session.Config.Name);
 
         if (!s.State.IsActive())
-            return $"{session.Config.Name} — {s.StateTitle}";
+            return Loc.Tf("tray.tip_state", session.Config.Name, s.StateTitle);
 
-        string pct = s.State == JobState.Preparing ? "Preparing…" : $"{s.Progress}%";
+        string paused = JobState.Paused.Title();
+        string pct = s.State == JobState.Preparing ? JobState.Preparing.Title() + "…" : $"{s.Progress}%";
         string? left = s.RemainingMinutes > 0 ? Format.Duration(s.RemainingMinutes) : null;
         return _store.Settings.MenuBarStyleSetting switch
         {
             SettingsStore.MenuBarStyle.Icon => s.State.Title(),
-            SettingsStore.MenuBarStyle.Percent => s.State == JobState.Paused ? "Paused" : pct,
-            SettingsStore.MenuBarStyle.Remaining => s.State == JobState.Paused ? "Paused" : left ?? pct,
+            SettingsStore.MenuBarStyle.Percent => s.State == JobState.Paused ? paused : pct,
+            SettingsStore.MenuBarStyle.Remaining => s.State == JobState.Paused ? paused : left ?? pct,
             _ => s.State == JobState.Paused
-                ? $"{pct} · Paused"
+                ? $"{pct} · {paused}"
                 : (left is null ? pct : $"{pct} · {left}"),
         };
     }
+
+    private static string PhaseName(PrinterSession.Phase phase) => phase switch
+    {
+        PrinterSession.Phase.Online => Loc.T("link.connected"),
+        PrinterSession.Phase.Connecting => Loc.T("link.connecting"),
+        PrinterSession.Phase.Offline => Loc.T("link.offline"),
+        PrinterSession.Phase.Unauthorized => Loc.T("link.unauthorized_short"),
+        PrinterSession.Phase.Certificate => Loc.T("link.cert"),
+        _ => phase.ToString(),
+    };
 
     public void Dispose()
     {
