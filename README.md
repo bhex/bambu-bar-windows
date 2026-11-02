@@ -19,7 +19,7 @@ The tray icon reflects the current print state:
 
 ![Tray icon states](docs/screenshots/tray-states.png)
 
-Both screenshots are live captures from a real print session (main window mid-print, mini panel after it finished).
+Both screenshots are live captures from a real print session (dark theme, filament colours as reported by the spools' RFID tags).
 
 ## Building
 
