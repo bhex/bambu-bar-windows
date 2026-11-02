@@ -89,8 +89,22 @@ public sealed class SettingsStore
     public bool ConfirmStop { get; set; } = true;
     public bool OpenAtLogin { get; set; }
     public ThemeMode ThemeModeSetting { get; set; } = ThemeMode.Auto;
+    /// <summary>Legacy "glass" look for the desktop widget (kept so existing settings files keep their look).</summary>
+    public bool WidgetGlass { get; set; }
+    /// <summary>Widget fill opacity in percent (0–100, 100 = solid) when set; null = derived from <see cref="WidgetGlass"/>.</summary>
+    public int? WidgetOpacity { get; set; }
+    /// <summary>Keep the widget above normal windows; off = it may sit behind other windows.</summary>
+    public bool WidgetTopmost { get; set; } = true;
+    /// <summary>Desktop widget enabled (shown). While it is up, a single tray click no longer opens the mini panel.</summary>
+    public bool WidgetEnabled { get; set; }
+    /// <summary>Widget size remembered for startup: 0 = compact, 1 = full.</summary>
+    public int WidgetSizeIndex { get; set; }
     /// <summary>Language code (e.g. "fi"); null = follow the Windows system language.</summary>
     public string? LanguageSetting { get; set; }
+
+    /// <summary>Effective widget fill opacity (0–100): the explicit level, else the legacy glass/solid default.</summary>
+    public int WidgetOpacityResolved =>
+        WidgetOpacity is { } o ? Math.Clamp(o, 0, 100) : (WidgetGlass ? 62 : 100);
 
     private static readonly JsonSerializerOptions Options = new()
     {

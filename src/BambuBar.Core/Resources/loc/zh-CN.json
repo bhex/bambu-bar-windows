@@ -265,6 +265,13 @@
   "mw.setup_cta": "设置后即可开始",
 
   "tray.open": "打开 Bambu Bar",
+  "tray.widget": "小部件",
+  "tray.widget.compact": "紧凑",
+  "tray.widget.full": "完整",
+  "tray.widget.on": "显示小部件",
+  "tray.widget.opacity": "不透明度",
+  "tray.widget.topmost": "始终置顶",
+  "tray.mini_panel": "迷你面板",
   "tray.pause": "暂停",
   "tray.resume": "继续",
   "tray.stop": "停止打印",

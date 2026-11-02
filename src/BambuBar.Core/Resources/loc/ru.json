@@ -265,6 +265,13 @@
   "mw.setup_cta": "Настройте, чтобы начать",
 
   "tray.open": "Открыть Bambu Bar",
+  "tray.widget": "Виджет",
+  "tray.widget.compact": "Компактный",
+  "tray.widget.full": "Полный",
+  "tray.widget.on": "Показать виджет",
+  "tray.widget.opacity": "Непрозрачность",
+  "tray.widget.topmost": "Всегда поверх",
+  "tray.mini_panel": "Мини-панель",
   "tray.pause": "Пауза",
   "tray.resume": "Продолжить",
   "tray.stop": "Остановить печать",

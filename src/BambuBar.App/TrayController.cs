@@ -18,18 +18,45 @@ public sealed class TrayController : IDisposable
     private readonly PrinterStore _store;
     private readonly NotifyIcon _tray;
     private readonly Action _openPanel;
+    private readonly Action _togglePanel;
     private readonly Action _openMainWindow;
     private readonly Action _quit;
+    private readonly Action<WidgetSize> _toggleWidget;
+    private readonly Func<WidgetSize, bool> _widgetActive;
+    private readonly Func<bool> _widgetVisible;
+    private readonly Func<bool> _widgetEnabled;
+    private readonly Action<bool> _setWidgetEnabled;
+    private readonly Func<int> _widgetOpacity;
+    private readonly Action<int> _setWidgetOpacity;
+    private readonly Func<bool> _widgetTopmost;
+    private readonly Action<bool> _setWidgetTopmost;
+    private readonly Func<bool> _panelVisible;
     private System.Windows.Forms.Timer? _clickTimer;
     private System.Windows.Forms.Timer? _prepAnim;
     private int _prepFrame;
 
-    public TrayController(PrinterStore store, Action openPanel, Action openMainWindow, Action quit)
+    public TrayController(PrinterStore store, Action openPanel, Action togglePanel, Action openMainWindow, Action quit,
+        Action<WidgetSize> toggleWidget, Func<WidgetSize, bool> widgetActive,
+        Func<bool> widgetVisible, Func<bool> widgetEnabled, Action<bool> setWidgetEnabled,
+        Func<int> widgetOpacity, Action<int> setWidgetOpacity,
+        Func<bool> widgetTopmost, Action<bool> setWidgetTopmost,
+        Func<bool> panelVisible)
     {
         _store = store;
         _openPanel = openPanel;
+        _togglePanel = togglePanel;
         _openMainWindow = openMainWindow;
         _quit = quit;
+        _toggleWidget = toggleWidget;
+        _widgetActive = widgetActive;
+        _widgetVisible = widgetVisible;
+        _widgetEnabled = widgetEnabled;
+        _setWidgetEnabled = setWidgetEnabled;
+        _widgetOpacity = widgetOpacity;
+        _setWidgetOpacity = setWidgetOpacity;
+        _widgetTopmost = widgetTopmost;
+        _setWidgetTopmost = setWidgetTopmost;
+        _panelVisible = panelVisible;
 
         _tray = new NotifyIcon
         {
@@ -41,6 +68,41 @@ public sealed class TrayController : IDisposable
         var menu = new ContextMenuStrip();
         var open = new ToolStripMenuItem(Loc.T("tray.open")) { ShortcutKeys = Keys.Control | Keys.O };
         open.Click += (_, _) => _openMainWindow();
+        var miniItem = new ToolStripMenuItem(Loc.T("tray.mini_panel"));
+        miniItem.Click += (_, _) =>
+        {
+            _togglePanel();
+            OnUi(Refresh); // keep the check-mark honest immediately, even if the printer is idle
+        };
+        var widget = new ToolStripMenuItem(Loc.T("tray.widget"));
+        var onItem = new ToolStripMenuItem(Loc.T("tray.widget.on"));
+        onItem.Click += (_, _) => _setWidgetEnabled(!_widgetEnabled());
+        var widgetCompact = new ToolStripMenuItem(Loc.T("tray.widget.compact"));
+        widgetCompact.Click += (_, _) => _toggleWidget(WidgetSize.Compact);
+        var widgetFull = new ToolStripMenuItem(Loc.T("tray.widget.full"));
+        widgetFull.Click += (_, _) => _toggleWidget(WidgetSize.Full);
+        var opacityMenu = new ToolStripMenuItem(Loc.T("tray.widget.opacity"));
+        var opacityItems = new List<(int Percent, ToolStripMenuItem Item)>();
+        foreach (int percent in new[] { 100, 75, 50, 25 })
+        {
+            int chosen = percent;
+            var item = new ToolStripMenuItem($"{chosen}%");
+            item.Click += (_, _) => _setWidgetOpacity(chosen);
+            opacityMenu.DropDownItems.Add(item);
+            opacityItems.Add((chosen, item));
+        }
+        _opacityItems = opacityItems.ToArray();
+        var topmostItem = new ToolStripMenuItem(Loc.T("tray.widget.topmost"));
+        topmostItem.Click += (_, _) => _setWidgetTopmost(!_widgetTopmost());
+        widget.DropDownItems.Add(onItem);
+        widget.DropDownItems.Add(widgetCompact);
+        widget.DropDownItems.Add(widgetFull);
+        widget.DropDownItems.Add(new ToolStripSeparator());
+        widget.DropDownItems.Add(opacityMenu);
+        widget.DropDownItems.Add(topmostItem);
+        menu.Items.Add(open);
+        menu.Items.Add(miniItem);
+        menu.Items.Add(widget);
         var pause = new ToolStripMenuItem(Loc.T("tray.pause")) { Visible = false };
         pause.Click += (_, _) => OnUi(() => _store.Pause());
         var resume = new ToolStripMenuItem(Loc.T("tray.resume")) { Visible = false };
@@ -49,7 +111,6 @@ public sealed class TrayController : IDisposable
         stop.Click += (_, _) => OnUi(() => _store.StopPrint());
         var quitItem = new ToolStripMenuItem(Loc.T("tray.quit"));
         quitItem.Click += (_, _) => _quit();
-        menu.Items.Add(open);
         menu.Items.Add(pause);
         menu.Items.Add(resume);
         menu.Items.Add(stop);
@@ -61,12 +122,22 @@ public sealed class TrayController : IDisposable
         _stopItem = stop;
         _openItem = open;
         _quitItem = quitItem;
+        _widgetItem = widget;
+        _widgetOnItem = onItem;
+        _widgetCompactItem = widgetCompact;
+        _widgetFullItem = widgetFull;
+        _widgetOpacityItem = opacityMenu;
+        _widgetTopmostItem = topmostItem;
+        _miniPanelItem = miniItem;
 
-        // Single click → panel; double click → main window. De-bounced with a short timer.
+        // Single click → mini panel (suppressed while the widget is on screen — the widget is
+        // that panel's replacement, so a stray pop-up would just cover it); double click → main
+        // window. De-bounced with a short timer.
         _clickTimer = new System.Windows.Forms.Timer { Interval = 350 };
         _clickTimer.Tick += (_, _) =>
         {
             _clickTimer!.Stop();
+            if (_widgetVisible()) return;
             _openPanel();
         };
 
@@ -127,6 +198,9 @@ public sealed class TrayController : IDisposable
     private readonly Action _locHandler;
     private readonly Action<PrinterStore.Toast> _toastHandler;
     private ToolStripMenuItem _pauseItem = null!, _resumeItem = null!, _stopItem = null!, _openItem = null!, _quitItem = null!;
+    private ToolStripMenuItem _widgetItem = null!, _widgetOnItem = null!, _widgetCompactItem = null!, _widgetFullItem = null!;
+    private ToolStripMenuItem _widgetOpacityItem = null!, _widgetTopmostItem = null!, _miniPanelItem = null!;
+    private (int Percent, ToolStripMenuItem Item)[] _opacityItems = Array.Empty<(int, ToolStripMenuItem)>();
 
     /// <summary>
     /// Runs an action on the WPF dispatcher (the tray lives on that thread; store events don't).
@@ -201,8 +275,23 @@ public sealed class TrayController : IDisposable
         _pauseItem.Visible = active && !paused;
         _resumeItem.Visible = paused;
         _stopItem.Visible = active;
-        // Keep the menu wording in sync with the active language.
+        // Keep the menu wording in sync with the active language, and mark the live widget state.
         _openItem.Text = Loc.T("tray.open");
+        _miniPanelItem.Text = Loc.T("tray.mini_panel");
+        _miniPanelItem.Checked = _panelVisible();
+        _widgetItem.Text = Loc.T("tray.widget");
+        _widgetOnItem.Text = Loc.T("tray.widget.on");
+        _widgetOnItem.Checked = _widgetEnabled();
+        _widgetCompactItem.Text = Loc.T("tray.widget.compact");
+        _widgetFullItem.Text = Loc.T("tray.widget.full");
+        _widgetCompactItem.Checked = _widgetActive(WidgetSize.Compact);
+        _widgetFullItem.Checked = _widgetActive(WidgetSize.Full);
+        _widgetOpacityItem.Text = Loc.T("tray.widget.opacity");
+        int currentOpacity = _widgetOpacity();
+        foreach (var (percent, item) in _opacityItems)
+            item.Checked = percent == currentOpacity;
+        _widgetTopmostItem.Text = Loc.T("tray.widget.topmost");
+        _widgetTopmostItem.Checked = _widgetTopmost();
         _pauseItem.Text = Loc.T("tray.pause");
         _resumeItem.Text = Loc.T("tray.resume");
         _stopItem.Text = Loc.T("tray.stop");

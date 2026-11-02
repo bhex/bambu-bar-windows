@@ -265,6 +265,13 @@
   "mw.setup_cta": "Configura para empezar",
 
   "tray.open": "Abrir Bambu Bar",
+  "tray.widget": "Widget",
+  "tray.widget.compact": "Compacto",
+  "tray.widget.full": "Completo",
+  "tray.widget.on": "Mostrar widget",
+  "tray.widget.opacity": "Opacidad",
+  "tray.widget.topmost": "Siempre encima",
+  "tray.mini_panel": "Mini panel",
   "tray.pause": "Pausa",
   "tray.resume": "Reanudar",
   "tray.stop": "Detener impresión",

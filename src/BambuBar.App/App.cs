@@ -24,9 +24,16 @@ public sealed class App : System.Windows.Application
     private Notifier? _notifier;
     private MainWindow? _mainWindow;
     private PanelWindow? _panelWindow;
+    private WidgetWindow? _widgetWindow;
+    private WidgetSize _widgetSize;
     private Thread? _pipeThread;
     private Mutex? _singleInstance;
     private bool _trayOnly;
+
+    // Set from the CLI (--widget compact|full, --glass) before Run(): start with the widget already on screen.
+    public bool StartWithWidget { get; set; }
+    public WidgetSize StartWithWidgetSize { get; set; } = WidgetSize.Compact;
+    public bool StartWithGlass { get; set; }
 
     // MARK: - Entry point & CLI
 
@@ -63,6 +70,14 @@ public sealed class App : System.Windows.Application
         }
 
         var app = new App();
+        int widgetIndex = list.IndexOf("--widget");
+        if (widgetIndex >= 0)
+        {
+            app.StartWithWidget = true;
+            app.StartWithWidgetSize = widgetIndex + 1 < list.Count
+                && list[widgetIndex + 1].Equals("full", StringComparison.OrdinalIgnoreCase) ? WidgetSize.Full : WidgetSize.Compact;
+        }
+        app.StartWithGlass = list.Contains("--glass");
         app.Run();
         return 0;
     }
@@ -86,6 +101,10 @@ public sealed class App : System.Windows.Application
             "  BambuBar.exe --tray             start quietly in the tray (used by \"open at login\")\n" +
             "  BambuBar.exe --demo [scenario]  try the app with a simulated printer\n" +
             "                                  (printing, preparing, paused, finished, failed, idle, offline)\n" +
+            "  BambuBar.exe --widget compact|full\n" +
+            "                                  start with the desktop widget visible\n" +
+            "                                  (compact: progress % and time left; full: the whole mini panel)\n" +
+            "  BambuBar.exe --glass            enable the Windows 11 glass (acrylic) widget backdrop\n" +
             "  BambuBar.exe --connect <host> <serial> <access-code>\n" +
             "                                  connect to a printer/emulator without saving anything\n" +
             "  BambuBar.exe --probe <host> <serial> <access-code> [seconds]\n" +
@@ -136,11 +155,15 @@ public sealed class App : System.Windows.Application
             suspend: () => { foreach (var s in _store!.Sessions) s.Suspend(); },
             resume: () => { foreach (var s in _store!.Sessions) s.Refresh(); });
 
-        _tray = new TrayController(_store, OpenPanel, OpenMainWindow, () => Shutdown());
+        _tray = new TrayController(_store, OpenPanel, TogglePanel, OpenMainWindow, () => Shutdown(), ToggleWidget, WidgetIsActive,
+            () => WidgetVisible, () => _store!.Settings.WidgetEnabled, SetWidgetEnabled,
+            () => _store!.Settings.WidgetOpacityResolved, SetWidgetOpacity,
+            () => _store!.Settings.WidgetTopmost, SetWidgetTopmost,
+            () => PanelVisible);
 
         // Build the mini panel now (hidden) so the first tray click is a plain Show/Activate
         // instead of paying full construction + first layout on the user's click.
-        _panelWindow = new PanelWindow(_store!, OpenMainWindow, () => Shutdown());
+        _panelWindow = new PanelWindow(_store!, OpenMainWindow, () => Shutdown(), () => WidgetScreenRect);
         new System.Windows.Interop.WindowInteropHelper(_panelWindow).EnsureHandle(); // HwndSource exists before first show
         _panelWindow.Refresh(force: true); // populate the body before it is ever shown
 
@@ -153,6 +176,15 @@ public sealed class App : System.Windows.Application
             if (firstRun || _store.IsDemo)
                 OpenMainWindow();
         }
+
+        if (StartWithGlass)
+            _store!.Settings.WidgetOpacity = 62; // the legacy "--glass" look, now an opacity level
+
+        // The widget starts shown when the CLI asked for it or the user left it enabled last run.
+        if (StartWithWidget)
+            ToggleWidget(StartWithWidgetSize);
+        else if (_store.Settings.WidgetEnabled)
+            ToggleWidget(_store.Settings.WidgetSizeIndex == 1 ? WidgetSize.Full : WidgetSize.Compact);
     }
 
     /// <summary>
@@ -183,6 +215,7 @@ public sealed class App : System.Windows.Application
                 // Never crash on exit.
             }
         }
+        try { _widgetWindow?.Close(); } catch { }
         try { _tray?.Dispose(); } catch { }
         try { ThemeEngine.Current.Shutdown(); } catch { }
         try { _singleInstance?.ReleaseMutex(); } catch { }
@@ -201,10 +234,19 @@ public sealed class App : System.Windows.Application
             return;
         }
         // Fallback for paths where pre-creation didn't happen (e.g. the first-instance handoff).
-        _panelWindow = new PanelWindow(_store!, OpenMainWindow, () => Shutdown());
+        _panelWindow = new PanelWindow(_store!, OpenMainWindow, () => Shutdown(), () => WidgetScreenRect);
         _panelWindow.Refresh(force: true);
         _panelWindow.Show();
         _panelWindow.Activate();
+    }
+
+    /// <summary>Show the mini panel if it is hidden, hide it if it is up (tray menu toggle).</summary>
+    public void TogglePanel()
+    {
+        if (_panelWindow is { IsVisible: true } panel)
+            panel.Hide();
+        else
+            OpenPanel();
     }
 
     public void OpenMainWindow()
@@ -219,6 +261,93 @@ public sealed class App : System.Windows.Application
         _mainWindow.Closed += (_, _) => _mainWindow = null;
         _mainWindow.Show();
     }
+
+    // MARK: - Widget
+
+    /// <summary>
+    /// Show the desktop widget at the requested size (enabling it). Hiding it is done through
+    /// <see cref="SetWidgetEnabled"/> ("Widget → Show widget"), since Compact/Full are size picks.
+    /// The window is kept around (pre-initialized, like the panel) so re-showing is instant.
+    /// </summary>
+    public void ToggleWidget(WidgetSize size)
+    {
+        int opacity = _store.Settings.WidgetOpacityResolved;
+        bool topmost = _store.Settings.WidgetTopmost;
+        if (_widgetWindow is { } w)
+        {
+            // A different size needs a rebuild (different width); opacity/topmost do not — they
+            // apply in place on the existing layered window.
+            if (w.Size != size)
+            {
+                w.Close();
+                _widgetWindow = null;
+            }
+            else
+            {
+                w.SetFillOpacity(opacity);
+                w.Topmost = topmost;
+            }
+        }
+        if (_widgetWindow is null)
+        {
+            _widgetWindow = new WidgetWindow(_store!, OpenMainWindow, opacity, topmost);
+            new System.Windows.Interop.WindowInteropHelper(_widgetWindow).EnsureHandle();
+        }
+        _widgetSize = size;
+        if (_widgetWindow.Size != size)
+            _widgetWindow.SetSize(size);
+        _widgetWindow.Show();
+        _widgetWindow.Refresh(force: true);
+        _store.Settings.WidgetEnabled = true;
+        _store.Settings.WidgetSizeIndex = size == WidgetSize.Full ? 1 : 0;
+        _store.Settings.Save();
+    }
+
+    public bool WidgetIsActive(WidgetSize size) => _widgetWindow is { IsVisible: true } && _widgetSize == size;
+
+    /// <summary>True while the widget is on screen (drives the tray's single-click suppression).</summary>
+    public bool WidgetVisible => _widgetWindow is { IsVisible: true };
+
+    /// <summary>Enable (show) or disable (hide) the widget; persisted so it survives restarts.</summary>
+    public void SetWidgetEnabled(bool on)
+    {
+        _store.Settings.WidgetEnabled = on;
+        _store.Settings.Save();
+        if (on)
+            ToggleWidget(_store.Settings.WidgetSizeIndex == 1 ? WidgetSize.Full : WidgetSize.Compact);
+        else if (_widgetWindow is { } w)
+            w.Hide();
+    }
+
+    /// <summary>Set the widget fill opacity (0–100%); applied in place when the widget is alive.</summary>
+    public void SetWidgetOpacity(int percent)
+    {
+        _store.Settings.WidgetOpacity = Math.Clamp(percent, 0, 100);
+        _store.Settings.Save();
+        if (_widgetWindow is { } w)
+            w.SetFillOpacity(percent);
+    }
+
+    /// <summary>Toggle "always on top"; applied in place when the widget is alive.</summary>
+    public void SetWidgetTopmost(bool on)
+    {
+        _store.Settings.WidgetTopmost = on;
+        _store.Settings.Save();
+        if (_widgetWindow is { } w)
+            w.Topmost = on;
+    }
+
+    /// <summary>True while the mini panel is on screen (tray menu check).</summary>
+    public bool PanelVisible => _panelWindow is { IsVisible: true };
+
+    /// <summary>
+    /// The widget's screen rectangle while it is visible, so the mini panel can stack above it
+    /// instead of opening underneath (the widget is topmost and owns the corner).
+    /// </summary>
+    public System.Windows.Rect? WidgetScreenRect =>
+        _widgetWindow is { IsVisible: true } w && w.ActualHeight > 1
+            ? new System.Windows.Rect(w.Left, w.Top, w.ActualWidth, w.ActualHeight)
+            : null;
 
     // MARK: - Single instance
 

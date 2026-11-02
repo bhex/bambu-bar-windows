@@ -18,15 +18,17 @@ namespace BambuBar.App;
 public sealed class PanelWindow : Window
 {
     private readonly PrinterStore _store;
+    private readonly Func<Rect?>? _widgetRect;
     private readonly Body _body;
     private readonly StackPanel _root;
     private readonly TextBlock _toast;
     private readonly DispatcherTimer _ticker;
     private string? _lastKey;
 
-    public PanelWindow(PrinterStore store, Action openMainWindow, Action quit)
+    public PanelWindow(PrinterStore store, Action openMainWindow, Action quit, Func<Rect?>? widgetRect = null)
     {
         _store = store;
+        _widgetRect = widgetRect;
         _body = new Body(store, openMainWindow, quit);
 
         Title = "Bambu Bar";
@@ -92,7 +94,14 @@ public sealed class PanelWindow : Window
         var area = SystemParameters.WorkArea;
         double h = ActualHeight > 0 ? ActualHeight : 400;
         Left = area.Right - Width - 12;
-        Top = Math.Max(0, area.Bottom - h - 12);
+        double top = area.Bottom - h - 12;
+        if (_widgetRect?.Invoke() is { Height: > 1 } widget)
+        {
+            // The widget owns the corner (and floats above us): stack the panel just above it
+            // instead of opening underneath it and vanishing from view.
+            top = Math.Min(top, widget.Top - h - 8);
+        }
+        Top = Math.Max(0, top);
     }
 
     /// <summary>
@@ -149,6 +158,7 @@ public sealed class Body
     private readonly Action _openMainWindow;
     private readonly Action _quit;
     private readonly ContentControl _host;
+    private readonly bool _interactive;
 
     private TextBlock? _jobName, _detail, _percent, _timing, _issueText, _updated;
     private Border? _progressBar;
@@ -159,11 +169,12 @@ public sealed class Body
     /// <summary>Uniform width for every primary / danger action button.</summary>
     private const double ActionButtonWidth = 110;
 
-    public Body(PrinterStore store, Action openMainWindow, Action quit)
+    public Body(PrinterStore store, Action openMainWindow, Action quit, bool interactive = true)
     {
         _store = store;
         _openMainWindow = openMainWindow;
         _quit = quit;
+        _interactive = interactive;
         _host = new ContentControl();
     }
 
@@ -186,7 +197,7 @@ public sealed class Body
             body.Children.Add(Temperatures(status));
             if (status.Ams.Count > 0 || status.ExternalSpool is { IsLoaded: true })
                 body.Children.Add(FilamentStrip(status));
-            if (status.State.IsActive())
+            if (status.State.IsActive() && _interactive)
                 body.Children.Add(PrintControls(status));
             body.Children.Add(UpdatedLine(status));
         }
@@ -264,8 +275,11 @@ public sealed class Body
         });
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        buttons.Children.Add(SmallButton("⟳", Loc.T("btn.refresh"), () => _store.Refresh()));
-        buttons.Children.Add(SmallButton("⚙", Loc.T("btn.settings"), _openMainWindow));
+        if (_interactive)
+        {
+            buttons.Children.Add(SmallButton("⟳", Loc.T("btn.refresh"), () => _store.Refresh()));
+            buttons.Children.Add(SmallButton("⚙", Loc.T("btn.settings"), _openMainWindow));
+        }
 
 
         Grid.SetColumn(left, 0);
@@ -301,7 +315,8 @@ public sealed class Body
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 6, 0, 10),
         });
-        panel.Children.Add(PrimaryButton(Loc.T("btn.setup"), _openMainWindow, width: ActionButtonWidth));
+        if (_interactive)
+            panel.Children.Add(PrimaryButton(Loc.T("btn.setup"), _openMainWindow, width: ActionButtonWidth));
         var card = Ui.Panel(panel, radius: 20, padding: 14);
         card.Margin = new Thickness(0, SectionGap, 0, 0);
         return card;
@@ -644,10 +659,13 @@ public sealed class Body
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 6, 0, 10),
         });
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal };
-        buttons.Children.Add(PrimaryButton(Loc.T("btn.retry"), () => _store.Refresh(), width: ActionButtonWidth));
-        buttons.Children.Add(PrimaryButton(Loc.T("btn.setup"), _openMainWindow, width: ActionButtonWidth));
-        content.Children.Add(buttons);
+        if (_interactive)
+        {
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal };
+            buttons.Children.Add(PrimaryButton(Loc.T("btn.retry"), () => _store.Refresh(), width: ActionButtonWidth));
+            buttons.Children.Add(PrimaryButton(Loc.T("btn.setup"), _openMainWindow, width: ActionButtonWidth));
+            content.Children.Add(buttons);
+        }
         var card = Ui.Panel(content, radius: 20, padding: 14);
         card.Margin = new Thickness(0, SectionGap, 0, 0);
         return card;
