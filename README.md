@@ -1,7 +1,8 @@
 # Bambu Bar for Windows
 
 A native Windows port of [bambu-bar](https://github.com/rolottr/bambu-bar) — a menu-bar-style
-companion for Bambu Lab P2-series printers (P2S and up). It lives in the system tray, shows live
+companion for your Bambu Lab printer (verified on P1S and P2S; other models that speak the same
+LAN protocol, such as the X1, A1 or H2 series, should work too). It lives in the system tray, shows live
 print status (progress, temperatures, layers, AMS/spool filament), and lets you pause, resume,
 stop and change print speed without leaving the printer's own app.
 
@@ -28,12 +29,20 @@ Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (Win
 dotnet build -c Release
 ```
 
-The app is at `src/BambuBar.App/bin/Release/net8.0-windows/BambuBar.exe`. To ship a single
-folder without the SDK:
+The app is at `src/BambuBar.App/bin/Release/net8.0-windows/BambuBar.exe` (this build needs the
+.NET 8 Desktop runtime on the machine).
+
+For the distributable build — one self-contained `BambuBar.exe` that runs on a clean Windows 10/11
+machine with nothing installed:
 
 ```sh
-dotnet publish src/BambuBar.App -c Release -r win-x64 --self-contained false
+dotnet publish src/BambuBar.App/BambuBar.App.csproj -c Release -r win-x64 --self-contained true
 ```
+
+The result is a single `publish/BambuBar.exe` (about 65 MB, .NET runtime included). Everything the
+app needs at runtime — the UI, localization in 14 languages, the HMS error catalog and the Bambu Lab
+CA certificates — is embedded in that one file; there is no folder of DLLs or resources to copy
+alongside it.
 
 ## Using it
 
@@ -60,10 +69,11 @@ Windows system appearance and updates live when it changes.
 
 The macOS original's trust model is preserved:
 
-- **TLS only, pinned to 1.2** — the P2S firmware does not answer TLS 1.3, so the client pins 1.2
-  and never silently downgrades.
+- **TLS only, pinned to 1.2** — Bambu Lab firmware does not answer TLS 1.3 (observed on P1S and
+  P2S), so the client pins 1.2 and never silently downgrades.
 - **Bundled Bambu Lab roots only** — the server certificate must chain to one of the Bambu roots
-  shipped inside the app (`BambuBar.Core/Resources/certificates/`). The Windows certificate store
+  shipped inside the executable (source: `BambuBar.Core/Resources/certificates/`). The Windows
+  certificate store
   is never consulted, so a local CA or a rogue `bambulab.com` name cannot impersonate a printer.
 - **Leaf certificate CN must equal the printer's serial number** — a valid Bambu-signed cert for a
   *different* device is rejected as "belongs to another device".

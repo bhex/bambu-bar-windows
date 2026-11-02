@@ -15,15 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Resources\certificates\**\*.pem">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Resources\hms_en.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Resources\loc\*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <!-- Bundled data (localization, HMS catalog, CA certificates) is embedded so the app can
+         ship as a single executable. Loose Resources\ files next to the executable still take
+         precedence (see Bundled.Read), so dev builds can swap them without recompiling. -->
+    <EmbeddedResource Include="Resources\certificates\**\*.pem" />
+    <EmbeddedResource Include="Resources\hms_en.json" />
+    <EmbeddedResource Include="Resources\loc\*.json" />
   </ItemGroup>
 
 </Project>

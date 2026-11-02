@@ -14,6 +14,11 @@
     <Description>Windows app for Bambu Bar: tray panel and window for Bambu Lab printers.</Description>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Ship as one executable: managed assemblies (and bundled data, embedded in Core) merge
+         into BambuBar.exe; self-contained, so the target PC needs no .NET runtime at all. -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>

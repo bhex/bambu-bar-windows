@@ -222,8 +222,12 @@ public sealed class FilamentPage
             remain.Children.Add(row);
 
             Color? tint = Palette.Filament(spool.Color);
+            // A near-black filament would vanish on a dark panel; put a light track under it.
+            Brush? track = Palette.Luminance(spool.Color) < 0.35 && ThemeEngine.Current.IsDark
+                ? new SolidColorBrush(ThemeEngine.Current.Neutral(0x99))
+                : null;
             var bar = Ui.Gauge(pct is { } p ? p / 100.0 : 0,
-                Ui.Brush(tint is { } c ? c : Palette.Idle), height: 5);
+                Ui.Brush(tint is { } c ? c : Palette.Idle), height: 5, trackOverride: track);
             if (spool.Remain is null) bar.Opacity = 0.4;
             bar.Margin = new Thickness(0, 5, 0, 0);
             remain.Children.Add(bar);
@@ -266,12 +270,13 @@ public sealed class FilamentPage
         double center = size / 2;
         double outerR = center - ringWidth / 2 - 0.5;
 
-        // Base ring.
+        // Base ring — kept clearly visible in both themes, so a black spool reads as a black
+        // swatch on a dark panel instead of blending into the background.
         root.Children.Add(new Ellipse
         {
             Width = outerR * 2,
             Height = outerR * 2,
-            Stroke = new SolidColorBrush(ThemeEngine.Current.Neutral(0x1A)),
+            Stroke = new SolidColorBrush(ThemeEngine.Current.Neutral(0x59)),
             StrokeThickness = ringWidth,
         });
 

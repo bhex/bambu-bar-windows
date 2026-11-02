@@ -43,8 +43,11 @@ public static class Palette
         Color.FromRgb((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
 
     /// <summary>
-    /// Parses a filament <c>RRGGBB</c>/<c>RRGGBBAA</c> string. Fully transparent colours (unset slots)
-    /// come back null; very low alpha is clamped up, as the macOS original does.
+    /// Parses the filament <c>RRGGBB</c>/<c>RRGGBBAA</c> string the printer reports. A fully
+    /// transparent colour (alpha 0, "00000000") means the colour wasn't reported → null, and the UI
+    /// draws its placeholder. Otherwise the RGB is rendered at full opacity, so a reported colour
+    /// looks the same in light mode and dark mode — a black spool ("000000FF") is a real colour,
+    /// not an absence, and must not be dimmed by the background.
     /// </summary>
     public static Color? Filament(string? hex)
     {
@@ -52,10 +55,8 @@ public static class Palette
         var clean = new string(hex.Where(char.IsLetterOrDigit).ToArray());
         if (clean.Length != 6 && clean.Length != 8) return null;
         if (!ulong.TryParse(clean, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var value)) return null;
-        double a = clean.Length == 8 ? (value & 0xFF) / 255.0 : 1.0;
-        if (a == 0) return null;
-        a = Math.Max(a, 0.35);
-        return Color.FromArgb((byte)(a * 255), (byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)(value & 0xFF));
+        if (clean.Length == 8 && (value & 0xFF) == 0) return null; // alpha 0 = colour not reported
+        return Color.FromRgb((byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)(value & 0xFF));
     }
 
     /// <summary>Perceived brightness of a <c>RRGGBB(AA)</c> colour, 0-1, for picking legible text on a swatch.</summary>

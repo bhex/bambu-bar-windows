@@ -538,7 +538,8 @@ public sealed class Body
                 Height = 22,
                 CornerRadius = new CornerRadius(11),
                 Background = color is { } c ? Ui.Brush(c) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x29)),
-                BorderBrush = new SolidColorBrush(ThemeEngine.Current.Neutral(0x33)),
+                // A visible edge in both themes, so a black spool doesn't disappear on a dark panel.
+                BorderBrush = new SolidColorBrush(ThemeEngine.Current.Neutral(0x66)),
                 BorderThickness = new Thickness(0.75),
                 Margin = new Thickness(0, 0, 7, 0),
                 VerticalAlignment = VerticalAlignment.Center,

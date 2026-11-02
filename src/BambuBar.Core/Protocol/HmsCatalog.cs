@@ -36,11 +36,11 @@ public sealed class HmsCatalog
         {
             if (_loaded) return;
             _loaded = true;
-            var path = Path.Combine(AppContext.BaseDirectory, "Resources", "hms_en.json");
-            if (!File.Exists(path)) return;
+            var text = Bundled.Read("hms_en.json");
+            if (text is null) return;
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                using var doc = JsonDocument.Parse(text);
                 var root = doc.RootElement;
                 if (root.TryGetProperty("hms", out var hms) && hms.ValueKind == JsonValueKind.Object)
                 {

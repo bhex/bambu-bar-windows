@@ -329,7 +329,8 @@ public sealed class OverviewPage
                 Height = 34,
                 CornerRadius = new CornerRadius(10),
                 Background = color is { } c ? Ui.Brush(c) : new SolidColorBrush(ThemeEngine.Current.Neutral(0x22)),
-                BorderBrush = spool.IsLoaded ? new SolidColorBrush(ThemeEngine.Current.Neutral(0x33)) : Brushes.Transparent,
+                // A visible edge in both themes, so a black spool doesn't disappear on a dark panel.
+                BorderBrush = spool.IsLoaded ? new SolidColorBrush(ThemeEngine.Current.Neutral(0x66)) : Brushes.Transparent,
                 BorderThickness = new Thickness(1),
                 Margin = new Thickness(0, 0, 0, 5),
             });

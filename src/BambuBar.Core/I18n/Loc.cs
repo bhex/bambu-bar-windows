@@ -106,14 +106,14 @@ public static class Loc
     {
         if (_loaded) return;
         _loaded = true;
-        var dir = Path.Combine(AppContext.BaseDirectory, "Resources", "loc");
-        if (!Directory.Exists(dir)) return;
-        foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
+        foreach (var file in Bundled.List("loc").Where(f => f.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
         {
             string code = Path.GetFileNameWithoutExtension(file);
+            var text = Bundled.Read($"loc/{file}");
+            if (text is null) continue;
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                using var doc = JsonDocument.Parse(text);
                 if (doc.RootElement.ValueKind != JsonValueKind.Object) continue;
                 var map = new Dictionary<string, string>(StringComparer.Ordinal);
                 foreach (var property in doc.RootElement.EnumerateObject())

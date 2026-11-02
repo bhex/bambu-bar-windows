@@ -417,20 +417,15 @@ public static class BambuTrust
 
     private static X509Certificate2[] LoadBundled()
     {
-        var candidates = new[]
-        {
-            Path.Combine(AppContext.BaseDirectory, "Resources", "certificates"),
-            Path.Combine(AppContext.BaseDirectory, "certificates"),
-        };
-        var dir = candidates.FirstOrDefault(Directory.Exists);
-        if (dir is null) return Array.Empty<X509Certificate2>();
-
         var certs = new List<X509Certificate2>();
-        foreach (var file in Directory.GetFiles(dir, "*.pem"))
+        // Qualified on purpose: this class's own `Bundled` field would otherwise shadow the helper type.
+        foreach (var file in BambuBar.Core.Bundled.List("certificates").Where(f => f.EndsWith(".pem", StringComparison.OrdinalIgnoreCase)))
         {
+            var text = BambuBar.Core.Bundled.Read($"certificates/{file}");
+            if (text is null) continue;
             try
             {
-                certs.AddRange(ParsePem(File.ReadAllText(file)));
+                certs.AddRange(ParsePem(text));
             }
             catch
             {
