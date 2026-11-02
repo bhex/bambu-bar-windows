@@ -272,6 +272,7 @@
   "tray.widget.opacity": "不透明度",
   "tray.widget.topmost": "始终置顶",
   "tray.mini_panel": "迷你面板",
+  "tray.notifications": "Windows 通知",
   "tray.pause": "暂停",
   "tray.resume": "继续",
   "tray.stop": "停止打印",
@@ -328,6 +329,7 @@
   "group.controls": "控制",
   "group.appearance": "外观",
 
+  "notif.master": "Windows 通知",
   "notif.finished": "打印完成",
   "notif.failed": "打印失败、被取消或发生错误",
   "notif.paused": "打印已暂停（耗材耗尽、用户操作）",

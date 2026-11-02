@@ -272,6 +272,7 @@
   "tray.widget.opacity": "Opacity",
   "tray.widget.topmost": "Always on top",
   "tray.mini_panel": "Mini panel",
+  "tray.notifications": "Windows notifications",
   "tray.pause": "Pause",
   "tray.resume": "Resume",
   "tray.stop": "Stop print",
@@ -328,6 +329,7 @@
   "group.controls": "Controls",
   "group.appearance": "Appearance",
 
+  "notif.master": "Windows notifications",
   "notif.finished": "Print finished",
   "notif.failed": "Print failed, canceled or an error",
   "notif.paused": "Print paused (filament runout, user)",

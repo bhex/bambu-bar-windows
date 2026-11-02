@@ -75,6 +75,7 @@ public sealed class SettingsPage
 
         // MARK: notifications
         var notifications = new StackPanel();
+        notifications.Children.Add(Toggle(Loc.T("notif.master"), settings.NotificationsEnabled, v => { settings.NotificationsEnabled = v; settings.Save(); }));
         notifications.Children.Add(Toggle(Loc.T("notif.finished"), settings.NotifyFinished, v => { settings.NotifyFinished = v; settings.Save(); }));
         notifications.Children.Add(Toggle(Loc.T("notif.failed"), settings.NotifyFailed, v => { settings.NotifyFailed = v; settings.Save(); }));
         notifications.Children.Add(Toggle(Loc.T("notif.paused"), settings.NotifyPaused, v => { settings.NotifyPaused = v; settings.Save(); }));

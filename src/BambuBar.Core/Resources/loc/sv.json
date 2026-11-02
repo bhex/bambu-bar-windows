@@ -272,6 +272,7 @@
   "tray.widget.opacity": "Opacitet",
   "tray.widget.topmost": "Alltid överst",
   "tray.mini_panel": "Mini-panel",
+  "tray.notifications": "Windows-aviseringar",
   "tray.pause": "Paus",
   "tray.resume": "Återuppta",
   "tray.stop": "Stoppa skrivut",
@@ -328,6 +329,7 @@
   "group.controls": "Kontroller",
   "group.appearance": "Utseende",
 
+  "notif.master": "Windows-aviseringar",
   "notif.finished": "Skrivut klar",
   "notif.failed": "Skrivut misslyckades, avbruten eller fel",
   "notif.paused": "Skrivut pausad (filament slut, användare)",

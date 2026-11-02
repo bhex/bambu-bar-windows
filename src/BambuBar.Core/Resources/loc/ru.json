@@ -272,6 +272,7 @@
   "tray.widget.opacity": "Непрозрачность",
   "tray.widget.topmost": "Всегда поверх",
   "tray.mini_panel": "Мини-панель",
+  "tray.notifications": "Уведомления Windows",
   "tray.pause": "Пауза",
   "tray.resume": "Продолжить",
   "tray.stop": "Остановить печать",
@@ -328,6 +329,7 @@
   "group.controls": "Управление",
   "group.appearance": "Внешний вид",
 
+  "notif.master": "Уведомления Windows",
   "notif.finished": "Печать завершена",
   "notif.failed": "Печать не удалась, отменена или произошла ошибка",
   "notif.paused": "Печать на паузе (закончился филамент, пользователь)",

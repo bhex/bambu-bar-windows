@@ -272,6 +272,7 @@
   "tray.widget.opacity": "Opacité",
   "tray.widget.topmost": "Toujours au premier plan",
   "tray.mini_panel": "Mini panneau",
+  "tray.notifications": "Notifications Windows",
   "tray.pause": "Pause",
   "tray.resume": "Reprendre",
   "tray.stop": "Arrêter l'impression",
@@ -328,6 +329,7 @@
   "group.controls": "Contrôles",
   "group.appearance": "Apparence",
 
+  "notif.master": "Notifications Windows",
   "notif.finished": "Impression terminée",
   "notif.failed": "Échec de l'impression, annulation ou erreur",
   "notif.paused": "Impression en pause (filament épuisé, utilisateur)",

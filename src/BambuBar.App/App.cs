@@ -159,7 +159,8 @@ public sealed class App : System.Windows.Application
             () => WidgetVisible, () => _store!.Settings.WidgetEnabled, SetWidgetEnabled,
             () => _store!.Settings.WidgetOpacityResolved, SetWidgetOpacity,
             () => _store!.Settings.WidgetTopmost, SetWidgetTopmost,
-            () => PanelVisible);
+            () => PanelVisible,
+            () => _store!.Settings.NotificationsEnabled, SetNotifications);
 
         // Build the mini panel now (hidden) so the first tray click is a plain Show/Activate
         // instead of paying full construction + first layout on the user's click.
@@ -340,6 +341,16 @@ public sealed class App : System.Windows.Application
     /// <summary>True while the mini panel is on screen (tray menu check).</summary>
     public bool PanelVisible => _panelWindow is { IsVisible: true };
 
+    /// <summary>Master switch for the Windows toast notifications (tray menu check).</summary>
+    public bool NotificationsOn => _store.Settings.NotificationsEnabled;
+
+    /// <summary>Enable/disable all Windows toast notifications; persisted.</summary>
+    public void SetNotifications(bool on)
+    {
+        _store.Settings.NotificationsEnabled = on;
+        _store.Settings.Save();
+    }
+
     /// <summary>
     /// The widget's screen rectangle while it is visible, so the mini panel can stack above it
     /// instead of opening underneath (the widget is topmost and owns the corner).
@@ -444,6 +455,7 @@ public sealed class Notifier
                 var status = session.LastStatus;
                 if (status is null) continue;
                 var settings = _store.Settings;
+                if (!settings.NotificationsEnabled) continue; // master switch: no Windows toasts at all
                 string name = session.Config?.Name ?? "";
                 var job = status.JobName.Length > 0 ? status.JobName : Loc.T("notif.job_default");
 

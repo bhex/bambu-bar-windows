@@ -82,6 +82,8 @@ public sealed class SettingsStore
     /// <summary>Null = automatic.</summary>
     public string? MenuBarSerial { get; set; }
     public MenuBarStyle MenuBarStyleSetting { get; set; } = MenuBarStyle.Both;
+    /// <summary>Master switch for the Windows toast notifications; the per-event toggles below decide which events fire.</summary>
+    public bool NotificationsEnabled { get; set; } = true;
     public bool NotifyFinished { get; set; } = true;
     public bool NotifyFailed { get; set; } = true;
     public bool NotifyPaused { get; set; } = true;

@@ -272,6 +272,7 @@
   "tray.widget.opacity": "Deckkraft",
   "tray.widget.topmost": "Immer im Vordergrund",
   "tray.mini_panel": "Mini-Panel",
+  "tray.notifications": "Windows-Benachrichtigungen",
   "tray.pause": "Pause",
   "tray.resume": "Fortsetzen",
   "tray.stop": "Druck stoppen",
@@ -328,6 +329,7 @@
   "group.controls": "Bedienung",
   "group.appearance": "Darstellung",
 
+  "notif.master": "Windows-Benachrichtigungen",
   "notif.finished": "Druck beendet",
   "notif.failed": "Druck fehlgeschlagen, abgebrochen oder Fehler",
   "notif.paused": "Druck pausiert (Filament ausgegangen, Benutzer)",

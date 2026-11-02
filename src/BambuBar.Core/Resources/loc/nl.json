@@ -272,6 +272,7 @@
   "tray.widget.opacity": "Dekking",
   "tray.widget.topmost": "Altijd bovenop",
   "tray.mini_panel": "Mini-paneel",
+  "tray.notifications": "Windows-meldingen",
   "tray.pause": "Pauze",
   "tray.resume": "Hervatten",
   "tray.stop": "Print stoppen",
@@ -328,6 +329,7 @@
   "group.controls": "Bediening",
   "group.appearance": "Weergave",
 
+  "notif.master": "Windows-meldingen",
   "notif.finished": "Print voltooid",
   "notif.failed": "Print mislukt, geannuleerd of een fout",
   "notif.paused": "Print gepauzeerd (filament op, gebruiker)",

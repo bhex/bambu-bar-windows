@@ -31,6 +31,8 @@ public sealed class TrayController : IDisposable
     private readonly Func<bool> _widgetTopmost;
     private readonly Action<bool> _setWidgetTopmost;
     private readonly Func<bool> _panelVisible;
+    private readonly Func<bool> _notificationsOn;
+    private readonly Action<bool> _setNotifications;
     private System.Windows.Forms.Timer? _clickTimer;
     private System.Windows.Forms.Timer? _prepAnim;
     private int _prepFrame;
@@ -40,7 +42,8 @@ public sealed class TrayController : IDisposable
         Func<bool> widgetVisible, Func<bool> widgetEnabled, Action<bool> setWidgetEnabled,
         Func<int> widgetOpacity, Action<int> setWidgetOpacity,
         Func<bool> widgetTopmost, Action<bool> setWidgetTopmost,
-        Func<bool> panelVisible)
+        Func<bool> panelVisible,
+        Func<bool> notificationsOn, Action<bool> setNotifications)
     {
         _store = store;
         _openPanel = openPanel;
@@ -57,6 +60,8 @@ public sealed class TrayController : IDisposable
         _widgetTopmost = widgetTopmost;
         _setWidgetTopmost = setWidgetTopmost;
         _panelVisible = panelVisible;
+        _notificationsOn = notificationsOn;
+        _setNotifications = setNotifications;
 
         _tray = new NotifyIcon
         {
@@ -100,9 +105,12 @@ public sealed class TrayController : IDisposable
         widget.DropDownItems.Add(new ToolStripSeparator());
         widget.DropDownItems.Add(opacityMenu);
         widget.DropDownItems.Add(topmostItem);
+        var notifItem = new ToolStripMenuItem(Loc.T("tray.notifications"));
+        notifItem.Click += (_, _) => _setNotifications(!_notificationsOn());
         menu.Items.Add(open);
         menu.Items.Add(miniItem);
         menu.Items.Add(widget);
+        menu.Items.Add(notifItem);
         var pause = new ToolStripMenuItem(Loc.T("tray.pause")) { Visible = false };
         pause.Click += (_, _) => OnUi(() => _store.Pause());
         var resume = new ToolStripMenuItem(Loc.T("tray.resume")) { Visible = false };
@@ -129,6 +137,7 @@ public sealed class TrayController : IDisposable
         _widgetOpacityItem = opacityMenu;
         _widgetTopmostItem = topmostItem;
         _miniPanelItem = miniItem;
+        _notifItem = notifItem;
 
         // Single click → mini panel (suppressed while the widget is on screen — the widget is
         // that panel's replacement, so a stray pop-up would just cover it); double click → main
@@ -200,6 +209,7 @@ public sealed class TrayController : IDisposable
     private ToolStripMenuItem _pauseItem = null!, _resumeItem = null!, _stopItem = null!, _openItem = null!, _quitItem = null!;
     private ToolStripMenuItem _widgetItem = null!, _widgetOnItem = null!, _widgetCompactItem = null!, _widgetFullItem = null!;
     private ToolStripMenuItem _widgetOpacityItem = null!, _widgetTopmostItem = null!, _miniPanelItem = null!;
+    private ToolStripMenuItem _notifItem = null!;
     private (int Percent, ToolStripMenuItem Item)[] _opacityItems = Array.Empty<(int, ToolStripMenuItem)>();
 
     /// <summary>
@@ -292,6 +302,8 @@ public sealed class TrayController : IDisposable
             item.Checked = percent == currentOpacity;
         _widgetTopmostItem.Text = Loc.T("tray.widget.topmost");
         _widgetTopmostItem.Checked = _widgetTopmost();
+        _notifItem.Text = Loc.T("tray.notifications");
+        _notifItem.Checked = _notificationsOn();
         _pauseItem.Text = Loc.T("tray.pause");
         _resumeItem.Text = Loc.T("tray.resume");
         _stopItem.Text = Loc.T("tray.stop");
