@@ -46,6 +46,7 @@ public sealed class BambuMqttClient : IAsyncDisposable
     private readonly IMqttClient _client;
     private readonly object _gate = new();
     private bool _finished;
+    private int _disposeStarted; // 0 = live, 1 = dispose in flight or done (Interlocked)
 
     public BambuMqttClient()
     {
@@ -164,10 +165,22 @@ public sealed class BambuMqttClient : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Idempotent and exception-safe: the session's Stop() and DisposeAsync() can race, and at
+    /// system shutdown the network stack is already dying — none of that may throw.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await DisconnectAsync();
-        _client.Dispose();
+        if (System.Threading.Interlocked.Exchange(ref _disposeStarted, 1) == 1) return; // already disposed
+        await DisconnectAsync(); // never throws (swallows internally)
+        try
+        {
+            _client.Dispose();
+        }
+        catch
+        {
+            // Disposing a half-dead MQTT client can throw; at shutdown we must not propagate it.
+        }
     }
 
     // MARK: - Events

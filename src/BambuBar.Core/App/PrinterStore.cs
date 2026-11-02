@@ -529,11 +529,17 @@ public sealed class PrinterStore : IAsyncDisposable
 
     private void RaiseChanged() => Changed?.Invoke();
 
+    /// <summary>
+    /// Disposes everything and never throws (shutdown teardown runs on a dying network),
+    /// and one bad session cannot block the rest.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        Stop();
-        _discovery.Dispose();
+        try { Stop(); } catch { }
+        try { _discovery.Dispose(); } catch { }
         foreach (var session in Sessions)
-            await session.DisposeAsync();
+        {
+            try { await session.DisposeAsync(); } catch { }
+        }
     }
 }

@@ -74,8 +74,9 @@ public sealed class TrayController : IDisposable
         _prepAnim = new System.Windows.Forms.Timer { Interval = 100 };
         _prepAnim.Tick += (_, _) =>
         {
+            if (_disposed) return;
             _prepFrame = (_prepFrame + 1) % 24;
-            _tray.Icon = TrayIcon.PrepSpin(_prepFrame);
+            try { _tray.Icon = TrayIcon.PrepSpin(_prepFrame); } catch { }
         };
         _tray.MouseClick += (_, e) =>
         {
@@ -103,32 +104,51 @@ public sealed class TrayController : IDisposable
             }
         };
 
-        _store.Changed += () => OnUi(Refresh);
-        Loc.Changed += () => OnUi(Refresh);
-        _store.Toasted += toast =>
+        // Named handlers so Dispose can unhook them: a store phase change arriving during
+        // teardown must not queue a refresh against an icon that is already gone.
+        _changedHandler = () => OnUi(Refresh);
+        _locHandler = () => OnUi(Refresh);
+        _toastHandler = toast =>
         {
             // Command acknowledgements and store-level toasts become balloons so they reach the user
             // even when no window is open.
             OnUi(() => ShowToast(toast.Message, toast.IsError ? ToolTipIcon.Warning : ToolTipIcon.Info));
         };
+        _store.Changed += _changedHandler;
+        Loc.Changed += _locHandler;
+        _store.Toasted += _toastHandler;
 
         Refresh();
     }
 
     private bool _pendingDoubleClick;
+    private volatile bool _disposed;
+    private readonly Action _changedHandler;
+    private readonly Action _locHandler;
+    private readonly Action<PrinterStore.Toast> _toastHandler;
     private ToolStripMenuItem _pauseItem = null!, _resumeItem = null!, _stopItem = null!, _openItem = null!, _quitItem = null!;
 
-    /// <summary>Runs an action on the WPF dispatcher (the tray lives on that thread; store events don't).</summary>
+    /// <summary>
+    /// Runs an action on the WPF dispatcher (the tray lives on that thread; store events don't).
+    /// Never propagates: work queued just before a Dispose can still run just after it, during
+    /// app exit, and an exception escaping there is an unhandled fault (WER crash).
+    /// </summary>
     private static void OnUi(Action action)
     {
+        void Run()
+        {
+            try { action(); }
+            catch { /* Outlived the tray; a stale refresh is worthless. */ }
+        }
         var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.CheckAccess()) action();
-        else dispatcher.BeginInvoke(action);
+        if (dispatcher is null || dispatcher.CheckAccess()) Run();
+        else dispatcher.BeginInvoke(Run);
     }
 
     /// <summary>Toast the user (balloon) — used for job lifecycle events too.</summary>
     public void ShowToast(string message, ToolTipIcon icon)
     {
+        if (_disposed) return;
         try
         {
             _tray.ShowBalloonTip(3000, "Bambu Bar", message, icon);
@@ -141,6 +161,7 @@ public sealed class TrayController : IDisposable
 
     private void Refresh()
     {
+        if (_disposed) return;
         var session = _store.TraySession;
         var status = session?.LastStatus;
         bool online = session is not null && session.CurrentPhase == PrinterSession.Phase.Online;
@@ -157,11 +178,19 @@ public sealed class TrayController : IDisposable
         }
 
         bool preparing = state == JobState.Preparing && progress < 0.02 && online;
-        _tray.Icon = preparing
-            ? TrayIcon.PrepSpin(_prepFrame)
-            : TrayIcon.Get(state, progress, alert, configured && !online);
+        try
+        {
+            _tray.Icon = preparing
+                ? TrayIcon.PrepSpin(_prepFrame)
+                : TrayIcon.Get(state, progress, alert, configured && !online);
+        }
+        catch
+        {
+            // The icon can die (app exit, explorer restart) in the same breath; a stale refresh
+            // is worthless and must never become an unhandled fault.
+        }
         if (preparing) _prepAnim?.Start(); else _prepAnim?.Stop();
-        _tray.Text = TooltipText(session, status, online);
+        try { _tray.Text = TooltipText(session, status, online); } catch { }
         UpdateMenu(session, status, online);
     }
 
@@ -222,10 +251,27 @@ public sealed class TrayController : IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
+        // Unhook first: a phase change during store teardown would otherwise queue a Refresh
+        // against a dead icon — the exact NRE (NotifyIcon.UpdateIcon) behind the WER crashes.
+        _store.Changed -= _changedHandler;
+        Loc.Changed -= _locHandler;
+        _store.Toasted -= _toastHandler;
+
+        _clickTimer?.Stop();
         _clickTimer?.Dispose();
         _prepAnim?.Stop();
         _prepAnim?.Dispose();
-        _tray.Visible = false;
-        _tray.Dispose();
+        try
+        {
+            _tray.Visible = false;
+            _tray.Dispose();
+        }
+        catch
+        {
+            // The icon may already be half-dead; the process is exiting either way.
+        }
     }
 }

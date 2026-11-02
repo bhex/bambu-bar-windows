@@ -155,19 +155,38 @@ public sealed class App : System.Windows.Application
         }
     }
 
+    /// <summary>
+    /// Teardown must never crash: at system shutdown the network stack and message pump are already
+    /// dying, and an exception escaping OnExit is an unhandled fault (WER crash).
+    /// Order matters: stop the store while the tray icon is still alive — the final phase change
+    /// raises Changed → tray refresh, and the 10/27 crashes were exactly that refresh hitting an
+    /// already-disposed icon (NotifyIcon NRE). Then dispose the tray. Every step is isolated, and
+    /// the network teardown gets a bounded wait so a wedged socket can't stall the shutdown.
+    /// </summary>
     protected override void OnExit(ExitEventArgs e)
     {
-        _notifier?.Detach();
-        _power?.Dispose();
-        _tray?.Dispose();
-        ThemeEngine.Current.Shutdown();
+        try { _notifier?.Detach(); } catch { }
+        try { _power?.Dispose(); } catch { }
         if (_store is not null)
         {
-            _store.Stop();
-            _store.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            try { _store.Stop(); } catch { }
+            try
+            {
+                var done = _store.DisposeAsync().AsTask();
+                if (!done.Wait(3000))
+                {
+                    // The socket is wedged on a dying network; abandon it — the process exits anyway.
+                }
+            }
+            catch
+            {
+                // Never crash on exit.
+            }
         }
-        _singleInstance?.ReleaseMutex();
-        _singleInstance?.Dispose();
+        try { _tray?.Dispose(); } catch { }
+        try { ThemeEngine.Current.Shutdown(); } catch { }
+        try { _singleInstance?.ReleaseMutex(); } catch { }
+        try { _singleInstance?.Dispose(); } catch { }
         base.OnExit(e);
     }
 
