@@ -55,7 +55,12 @@ public static class Palette
         var clean = new string(hex.Where(char.IsLetterOrDigit).ToArray());
         if (clean.Length != 6 && clean.Length != 8) return null;
         if (!ulong.TryParse(clean, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var value)) return null;
-        if (clean.Length == 8 && (value & 0xFF) == 0) return null; // alpha 0 = colour not reported
+        if (clean.Length == 8)
+        {
+            // RRGGBBAA — the last byte is the alpha, not the blue channel.
+            if ((value & 0xFF) == 0) return null; // alpha 0 = colour not reported
+            return Color.FromRgb((byte)((value >> 24) & 0xFF), (byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF));
+        }
         return Color.FromRgb((byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)(value & 0xFF));
     }
 
